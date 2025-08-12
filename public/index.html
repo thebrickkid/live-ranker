@@ -43,7 +43,6 @@
         .sortable-ghost { opacity: 0.4; background: #c8ebfb; }
         .empty-message { text-align: center; color: #888; padding: 40px; font-size: 1.2em; }
         
-        /* --- MODAL AND CHAT Z-INDEX FIX --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -54,7 +53,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1002; /* Higher than chat */
+            z-index: 1002;
         }
         #chat-container {
             position: fixed;
@@ -66,16 +65,38 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-            z-index: 1001; /* Lower than modal */
+            z-index: 1001;
             display: flex;
             flex-direction: column;
         }
-        /* --- END FIX --- */
 
         .modal-content { background-color: white; padding: 20px; border-radius: 8px; text-align: center; }
         .crop-container { margin: 20px 0; max-width: 80vw; max-height: 70vh; }
         #image-to-crop { display: block; max-width: 100%; }
-        #chat-header { padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); font-weight: bold; text-align: center; color: var(--column-header-color); }
+        
+        #chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            color: var(--column-header-color);
+        }
+        #clear-chat-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #clear-chat-btn:hover {
+            background: #5a6268;
+        }
+
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
         #chat-log p { margin: 0 0 8px 0; word-wrap: break-word; }
         #chat-log strong { color: var(--primary-color); }
@@ -113,7 +134,10 @@
         </div>
     </div>
     <div id="chat-container">
-        <div id="chat-header">Live Chat</div>
+        <div id="chat-header">
+            <span>Live Chat</span>
+            <button id="clear-chat-btn">Clear</button>
+        </div>
         <div id="chat-log"></div>
         <div id="chat-input-area">
             <input type="text" id="chat-input" placeholder="Type a message...">
@@ -121,17 +145,14 @@
         </div>
     </div>
 
-    <!-- Import Socket.IO and SortableJS libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- 1. SETUP & INITIALIZATION ---
-            const socket = io(); // Connect to the server
+            const socket = io();
 
-            // DOM Elements
             const uploadBtn = document.getElementById('upload-btn');
             const fileInput = document.getElementById('file-input');
             const modal = document.getElementById('crop-modal');
@@ -144,14 +165,13 @@
             const chatLog = document.getElementById('chat-log');
             const chatInput = document.getElementById('chat-input');
             const chatSendBtn = document.getElementById('chat-send-btn');
+            const clearChatBtn = document.getElementById('clear-chat-btn');
 
-            // App State
             let cropper = null;
             let listA_Items = [];
             let listB_Items = [];
-            let username = sessionStorage.getItem('chatUsername'); // Use sessionStorage for non-persistent name
+            let username = sessionStorage.getItem('chatUsername');
 
-            // --- 2. RENDERING FUNCTIONS ---
             const createRankItemElement = (item) => {
                 const listItem = document.createElement('li');
                 listItem.className = 'rank-item';
@@ -212,9 +232,6 @@
                 chatLog.scrollTop = chatLog.scrollHeight;
             };
 
-            // --- 3. EVENT LISTENERS & HANDLERS ---
-            
-            // --- UI Event Listeners ---
             uploadBtn.addEventListener('click', () => fileInput.click());
             
             fileInput.addEventListener('change', (event) => {
@@ -248,20 +265,19 @@
                     text: description || "",
                     link: link || "",
                 };
-                listA_Items.push(JSON.parse(JSON.stringify(newItem)));
-                listB_Items.push(JSON.parse(JSON.stringify(newItem)));
-                socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
-                renderAllLists();
+                
+                const newListA = [...listA_Items, JSON.parse(JSON.stringify(newItem))];
+                const newListB = [...listB_Items, JSON.parse(JSON.stringify(newItem))];
+                socket.emit('updateLists', { listA: newListA, listB: newListB });
             });
 
             document.body.addEventListener('click', (event) => {
                 if (event.target.classList.contains('delete-btn')) {
                     const listItem = event.target.closest('.rank-item');
                     const itemId = Number(listItem.dataset.id);
-                    listA_Items = listA_Items.filter(item => item.id !== itemId);
-                    listB_Items = listB_Items.filter(item => item.id !== itemId);
-                    socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
-                    renderAllLists();
+                    const newListA = listA_Items.filter(item => item.id !== itemId);
+                    const newListB = listB_Items.filter(item => item.id !== itemId);
+                    socket.emit('updateLists', { listA: newListA, listB: newListB });
                 }
             });
 
@@ -284,7 +300,12 @@
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
 
-            // --- Socket.IO Event Listeners ---
+            clearChatBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear the entire chat history for everyone? This cannot be undone.')) {
+                    socket.emit('clearChat');
+                }
+            });
+
             socket.on('connect', () => {
                 console.log('Connected to server!');
                 socket.emit('requestInitialData');
@@ -299,6 +320,10 @@
                 renderChatMessage(msg);
             });
 
+            socket.on('chatCleared', () => {
+                chatLog.innerHTML = '';
+            });
+
             socket.on('rankingLists', (lists) => {
                 console.log('Received updated lists from server');
                 listA_Items = lists.listA;
@@ -306,7 +331,6 @@
                 renderAllLists();
             });
 
-            // --- SortableJS Initialization ---
             const createSortable = (listElement, itemsArray) => {
                 new Sortable(listElement, {
                     animation: 150,
