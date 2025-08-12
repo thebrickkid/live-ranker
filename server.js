@@ -31,42 +31,7 @@ app.get('/', (req, res) => {
 });
 
 
-// --- 3. HELPER FUNCTION TO DELETE A COLLECTION ---
-async function deleteCollection(db, collectionPath, batchSize) {
-    const collectionRef = db.collection(collectionPath);
-    const query = collectionRef.orderBy('__name__').limit(batchSize);
-
-    return new Promise((resolve, reject) => {
-        deleteQueryBatch(db, query, resolve).catch(reject);
-    });
-}
-
-async function deleteQueryBatch(db, query, resolve) {
-    const snapshot = await query.get();
-
-    const batchSize = snapshot.size;
-    if (batchSize === 0) {
-        // When there are no documents left, we are done
-        resolve();
-        return;
-    }
-
-    // Delete documents in a batch
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
-
-    // Recurse on the next process tick, to avoid
-    // exploding the stack.
-    process.nextTick(() => {
-        deleteQueryBatch(db, query, resolve);
-    });
-}
-
-
-// --- 4. REAL-TIME COMMUNICATION (SOCKET.IO) ---
+// --- 3. REAL-TIME COMMUNICATION (SOCKET.IO) ---
 
 io.on('connection', (socket) => {
   console.log(`[CONNECT] User connected: ${socket.id}`);
@@ -100,7 +65,7 @@ io.on('connection', (socket) => {
     const messageData = { ...msg, timestamp: new Date() };
     try {
         await db.collection('chat').add(messageData);
-        io.emit('chatMessage', messageData); // Broadcast to all
+        io.emit('chatMessage', messageData);
     } catch (error) {
         console.error("[ERROR] Failed to save chat message:", error);
     }
@@ -110,9 +75,24 @@ io.on('connection', (socket) => {
   socket.on('clearChat', async () => {
     console.log(`[CHAT] Received 'clearChat' command.`);
     try {
-        await deleteCollection(db, 'chat', 50);
-        console.log('[SUCCESS] Chat history cleared from database.');
-        io.emit('chatCleared'); // Notify all clients
+        const chatCollection = db.collection('chat');
+        const snapshot = await chatCollection.get();
+        
+        if (snapshot.empty) {
+            console.log("[INFO] Chat collection is already empty.");
+            io.emit('chatCleared');
+            return;
+        }
+
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        console.log(`[SUCCESS] Deleted ${snapshot.size} chat messages.`);
+        io.emit('chatCleared');
+
     } catch (error) {
         console.error("[ERROR] Failed to clear chat:", error);
     }
@@ -126,7 +106,6 @@ io.on('connection', (socket) => {
         await db.collection('rankingLists').doc('listA').set({ items: lists.listA });
         await db.collection('rankingLists').doc('listB').set({ items: lists.listB });
         console.log('[SUCCESS] Ranking lists saved to database.');
-        // Broadcast the confirmed new state to ALL clients
         io.emit('rankingLists', lists);
     } catch (error) {
         console.error("[ERROR] Failed to update ranking lists:", error);
@@ -141,7 +120,7 @@ io.on('connection', (socket) => {
 });
 
 
-// --- 5. START THE SERVER ---
+// --- 4. START THE SERVER ---
 
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

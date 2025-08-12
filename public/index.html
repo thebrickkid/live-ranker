@@ -171,6 +171,8 @@
             let listA_Items = [];
             let listB_Items = [];
             let username = sessionStorage.getItem('chatUsername');
+            let sortableA = null;
+            let sortableB = null;
 
             const createRankItemElement = (item) => {
                 const listItem = document.createElement('li');
@@ -230,6 +232,35 @@
                 msgElement.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
                 chatLog.appendChild(msgElement);
                 chatLog.scrollTop = chatLog.scrollHeight;
+            };
+
+            const initializeSortables = () => {
+                if (sortableA) sortableA.destroy();
+                if (sortableB) sortableB.destroy();
+
+                sortableA = new Sortable(rankListA, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: () => {
+                        const newOrder = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => {
+                            return listA_Items.find(i => i.id == item.dataset.id);
+                        });
+                        listA_Items = newOrder;
+                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+                    }
+                });
+
+                sortableB = new Sortable(rankListB, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: () => {
+                        const newOrder = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => {
+                            return listB_Items.find(i => i.id == item.dataset.id);
+                        });
+                        listB_Items = newOrder;
+                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+                    }
+                });
             };
 
             uploadBtn.addEventListener('click', () => fileInput.click());
@@ -301,9 +332,7 @@
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
 
             clearChatBtn.addEventListener('click', () => {
-                const confirmation = prompt('Type "CLEAR" to delete the entire chat history for everyone.');
-                if (confirmation === 'CLEAR') {
-                    console.log("Sending clearChat event to server.");
+                if (window.confirm('Are you sure you want to delete the entire chat history for everyone? This cannot be undone.')) {
                     socket.emit('clearChat');
                 }
             });
@@ -314,44 +343,24 @@
             });
 
             socket.on('chatHistory', (history) => {
-                console.log('CLIENT: Received chat history.');
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
             });
 
             socket.on('chatMessage', (msg) => {
-                console.log('CLIENT: Received new chat message.');
                 renderChatMessage(msg);
             });
 
             socket.on('chatCleared', () => {
-                console.log('CLIENT: Received chat cleared event.');
                 chatLog.innerHTML = '';
             });
 
             socket.on('rankingLists', (lists) => {
-                console.log('CLIENT: Received updated lists from server.');
                 listA_Items = lists.listA;
                 listB_Items = lists.listB;
                 renderAllLists();
+                initializeSortables(); // Re-initialize after every render
             });
-
-            const createSortable = (listElement, itemsArray, listId) => {
-                new Sortable(listElement, {
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    onEnd: (event) => {
-                        // Reorder the local array based on the drag-and-drop
-                        const movedItem = itemsArray.splice(event.oldIndex, 1)[0];
-                        itemsArray.splice(event.newIndex, 0, movedItem);
-                        
-                        // Send the complete, updated state of BOTH lists to the server
-                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
-                    }
-                });
-            };
-            createSortable(rankListA, listA_Items);
-            createSortable(rankListB, listB_Items);
         });
     </script>
 </body>
