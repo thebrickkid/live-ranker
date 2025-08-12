@@ -2,36 +2,28 @@
 
 // --- 1. SETUP AND INITIALIZATION ---
 
-// Import necessary libraries
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-// IMPORTANT: Firebase Setup
-// 1. Go to your Firebase project settings -> Service Accounts.
-// 2. Click "Generate new private key" and download the JSON file.
-// 3. Rename the file to 'serviceAccountKey.json' and place it in the same directory as this server.js file.
 const serviceAccount = require('./serviceAccountKey.json');
 
 initializeApp({
   credential: cert(serviceAccount)
 });
 
-const db = getFirestore(); // Connect to our Firestore database
+const db = getFirestore();
 
-// Initialize Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server); // Initialize Socket.IO
+const io = new Server(server);
 
-const PORT = process.env.PORT || 3000; // Port to run the server on
+const PORT = process.env.PORT || 3000;
 
 // --- 2. SERVE THE WEBSITE ---
 
-// This tells the server to make the 'public' folder accessible to the web.
-// We will put our index.html, images, etc., in a folder named 'public'.
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
@@ -39,21 +31,54 @@ app.get('/', (req, res) => {
 });
 
 
-// --- 3. REAL-TIME COMMUNICATION (SOCKET.IO) ---
+// --- 3. HELPER FUNCTION TO DELETE A COLLECTION ---
+async function deleteCollection(db, collectionPath, batchSize) {
+    const collectionRef = db.collection(collectionPath);
+    const query = collectionRef.orderBy('__name__').limit(batchSize);
+
+    return new Promise((resolve, reject) => {
+        deleteQueryBatch(db, query, resolve).catch(reject);
+    });
+}
+
+async function deleteQueryBatch(db, query, resolve) {
+    const snapshot = await query.get();
+
+    const batchSize = snapshot.size;
+    if (batchSize === 0) {
+        // When there are no documents left, we are done
+        resolve();
+        return;
+    }
+
+    // Delete documents in a batch
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // Recurse on the next process tick, to avoid
+    // exploding the stack.
+    process.nextTick(() => {
+        deleteQueryBatch(db, query, resolve);
+    });
+}
+
+
+// --- 4. REAL-TIME COMMUNICATION (SOCKET.IO) ---
 
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  console.log(`[CONNECT] User connected: ${socket.id}`);
 
   // --- Initial Data Load ---
-  // When a new user connects, send them the latest data from the database.
   socket.on('requestInitialData', async () => {
+    console.log(`[REQUEST] User ${socket.id} requested initial data.`);
     try {
-      // Fetch Chat History
       const chatSnapshot = await db.collection('chat').orderBy('timestamp').get();
       const chatHistory = chatSnapshot.docs.map(doc => doc.data());
       socket.emit('chatHistory', chatHistory);
 
-      // Fetch Ranking Lists
       const listASnapshot = await db.collection('rankingLists').doc('listA').get();
       const listBSnapshot = await db.collection('rankingLists').doc('listB').get();
       
@@ -61,50 +86,62 @@ io.on('connection', (socket) => {
       const listB = listBSnapshot.exists ? listBSnapshot.data().items : [];
       
       socket.emit('rankingLists', { listA, listB });
+      console.log(`[SUCCESS] Sent initial data to ${socket.id}`);
 
     } catch (error) {
-      console.error("Error fetching initial data:", error);
+      console.error("[ERROR] Failed to fetch initial data:", error);
     }
   });
 
 
   // --- Chat Handling ---
   socket.on('chatMessage', async (msg) => {
-    const messageData = {
-        ...msg,
-        timestamp: new Date() // Add a server-side timestamp
-    };
-    // Save the message to the database
-    await db.collection('chat').add(messageData);
-    // Broadcast the message to ALL connected users (including the sender)
-    io.emit('chatMessage', messageData);
+    console.log(`[CHAT] Received message from ${msg.user}`);
+    const messageData = { ...msg, timestamp: new Date() };
+    try {
+        await db.collection('chat').add(messageData);
+        io.emit('chatMessage', messageData); // Broadcast to all
+    } catch (error) {
+        console.error("[ERROR] Failed to save chat message:", error);
+    }
+  });
+
+  // --- Clear Chat Handling ---
+  socket.on('clearChat', async () => {
+    console.log(`[CHAT] Received 'clearChat' command.`);
+    try {
+        await deleteCollection(db, 'chat', 50);
+        console.log('[SUCCESS] Chat history cleared from database.');
+        io.emit('chatCleared'); // Notify all clients
+    } catch (error) {
+        console.error("[ERROR] Failed to clear chat:", error);
+    }
   });
 
 
   // --- Ranking List Handling ---
   socket.on('updateLists', async (lists) => {
-    // Save the updated lists to the database
-    await db.collection('rankingLists').doc('listA').set({ items: lists.listA });
-    await db.collection('rankingLists').doc('listB').set({ items: lists.listB });
-    
-    // Broadcast the updated lists to all OTHER connected users
-    socket.broadcast.emit('rankingLists', lists);
+    console.log(`[RANKING] Received 'updateLists' command.`);
+    try {
+        await db.collection('rankingLists').doc('listA').set({ items: lists.listA });
+        await db.collection('rankingLists').doc('listB').set({ items: lists.listB });
+        console.log('[SUCCESS] Ranking lists saved to database.');
+        // Broadcast the confirmed new state to ALL clients
+        io.emit('rankingLists', lists);
+    } catch (error) {
+        console.error("[ERROR] Failed to update ranking lists:", error);
+    }
   });
   
-  // --- Image Handling ---
-  // The frontend will now handle images as data URLs to keep this simple.
-  // For actual file uploads, we would need more complex code (e.g., using 'multer').
-  // The current approach is robust for this application's needs.
-
 
   // --- Disconnect Handling ---
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log(`[DISCONNECT] User disconnected: ${socket.id}`);
   });
 });
 
 
-// --- 4. START THE SERVER ---
+// --- 5. START THE SERVER ---
 
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
