@@ -1,0 +1,16 @@
+{
+  "name": "live-ranker-app",
+  "version": "1.0.0",
+  "description": "A real-time ranking application.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^11.10.1",
+    "socket.io": "^4.7.2"
+  }
+}
