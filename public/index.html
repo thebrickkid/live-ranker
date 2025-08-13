@@ -128,12 +128,21 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
             const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
-            let isEditMode = false, editingItemId = null, isChatVisible = true;
+            let isEditMode = false, editingItemId = null;
             
+            // --- CHAT VISIBILITY & NOTIFICATIONS ---
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
-            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; isChatVisible = true; stopChatNotification(); scrollToChatBottom(); });
-            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; isChatVisible = false; });
+            
+            openChatBtn.addEventListener('click', () => {
+                chatContainer.style.display = 'flex';
+                scrollToChatBottom();
+            });
+            minimizeChatBtn.addEventListener('click', () => {
+                chatContainer.style.display = 'none';
+            });
+            // CHANGE: Clicking in the input box is now the only way to stop the flash
             chatInput.addEventListener('focus', stopChatNotification);
+            
             clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
             const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
             const updateUserMessageColors = (user, newColor) => { document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => { el.style.color = newColor; }); };
@@ -202,34 +211,30 @@
                 let itemA = listA_Items.find(i => i.id === itemId);
                 let itemB = listB_Items.find(i => i.id === itemId);
                 if (!itemA || !itemB) return;
-                
                 const action = prompt(`Editing "${itemA.text}".\nType 'text', 'link', 'image', or 'delete':`);
                 if (!action) return;
-                
                 const actionLower = action.toLowerCase();
-                if (actionLower === 'text') {
-                    const newText = prompt("Enter new text:", itemA.text);
-                    if (newText !== null) { itemA.text = newText; itemB.text = newText; }
-                } else if (actionLower === 'link') {
-                    const currentUsername = itemA.link ? itemA.link.split('/').pop() : "";
-                    const newUsername = prompt("Enter new Instagram username:", currentUsername);
-                    if (newUsername !== null) { const newLink = newUsername ? `https://www.instagram.com/${newUsername.trim()}` : ""; itemA.link = newLink; itemB.link = newLink; }
-                } else if (actionLower === 'image') {
-                    editingItemId = itemId;
-                    document.getElementById('file-input').click();
-                } else if (actionLower === 'delete') {
-                    if (confirm(`Are you sure you want to delete "${itemA.text}" from both lists?`)) {
-                        listA_Items = listA_Items.filter(i => i.id !== itemId);
-                        listB_Items = listB_Items.filter(i => i.id !== itemId);
-                    }
-                }
+                if (actionLower === 'text') { const newText = prompt("Enter new text:", itemA.text); if (newText !== null) { itemA.text = newText; itemB.text = newText; }
+                } else if (actionLower === 'link') { const currentUsername = itemA.link ? itemA.link.split('/').pop() : ""; const newUsername = prompt("Enter new Instagram username:", currentUsername); if (newUsername !== null) { const newLink = newUsername ? `https://www.instagram.com/${newUsername.trim()}` : ""; itemA.link = newLink; itemB.link = newLink; }
+                } else if (actionLower === 'image') { editingItemId = itemId; document.getElementById('file-input').click();
+                } else if (actionLower === 'delete') { if (confirm(`Are you sure you want to delete "${itemA.text}"?`)) { listA_Items = listA_Items.filter(i => i.id !== itemId); listB_Items = listB_Items.filter(i => i.id !== itemId); } }
                 renderAllLists();
             });
 
             socket.on('initialData', ({ lists, headers }) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; } });
             socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
-            socket.on('chatHistory', (history) => { chatLog.innerHTML = ''; history.forEach(renderChatMessage); scrollToChatBottom(); if (window.innerWidth >= 901) { isChatVisible = true; chatContainer.style.display = 'flex'; } else { isChatVisible = false; chatContainer.style.display = 'none'; } });
-            socket.on('chatMessage', (msg) => { renderChatMessage(msg); scrollToChatBottom(); updateChatPreview(); const currentUser = sessionStorage.getItem('chatUsername'); if (!isChatVisible && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash'); });
+            socket.on('chatHistory', (history) => { chatLog.innerHTML = ''; history.forEach(renderChatMessage); scrollToChatBottom(); if (window.innerWidth >= 901) { chatContainer.style.display = 'flex'; } else { chatContainer.style.display = 'none'; } });
+            // CHANGE: Updated chat message listener
+            socket.on('chatMessage', (msg) => {
+                renderChatMessage(msg);
+                scrollToChatBottom();
+                updateChatPreview();
+                const currentUser = sessionStorage.getItem('chatUsername');
+                // Flash for any new message from another user, regardless of chat visibility
+                if (msg.user !== currentUser) {
+                    openChatBtn.classList.add('new-message-flash');
+                }
+            });
             socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
             socket.on('messageEdited', ({ id, text, user, color }) => { const p = chatLog.querySelector(`[data-message-id='${id}']`); if (p) { const strong = p.querySelector('strong'); strong.style.color = color || '#007bff'; p.querySelector('span').innerHTML = ''; p.querySelector('span').appendChild(strong); p.querySelector('span').append(` ${text}`); } updateChatPreview(); });
             socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
