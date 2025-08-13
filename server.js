@@ -13,9 +13,9 @@ const { v4: uuidv4 } = require('uuid');
 const serviceAccount = require('./serviceAccountKey.json');
 initializeApp({
   credential: cert(serviceAccount),
-  // CHANGE: Explicitly adding the projectId to resolve the bucket error
-  projectId: 'rank-9c97d',
-  storageBucket: 'rank-9c97d.appspot.com' 
+  // CHANGE: Updated with your new Project ID
+  projectId: 'bb-ranker',
+  storageBucket: 'bb-ranker.appspot.com' 
 });
 
 const db = getFirestore();
