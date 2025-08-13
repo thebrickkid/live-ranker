@@ -20,16 +20,14 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO with a higher message size limit
-// This is the key change to fix the upload limit issue.
 const io = new Server(server, {
-  maxHttpBufferSize: 1e7 // Set limit to 10 MB (default is 1 MB)
+  maxHttpBufferSize: 1e7 // 10 MB limit
 });
 
 const PORT = process.env.PORT || 3000;
 
 // --- 2. SERVE THE WEBSITE ---
 
-// Serve static files from the 'public' directory
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
@@ -71,8 +69,6 @@ io.on('connection', (socket) => {
     try {
       await db.collection('rankingLists').doc('listA').set({ items: lists.listA });
       await db.collection('rankingLists').doc('listB').set({ items: lists.listB });
-      console.log('[SUCCESS] Ranking lists saved to database.');
-      // Broadcast the updated lists to all clients
       io.emit('rankingLists', lists);
     } catch (error) {
       console.error("[ERROR] Failed to update ranking lists:", error);
@@ -82,15 +78,60 @@ io.on('connection', (socket) => {
   // --- Chat Handling ---
   socket.on('chatMessage', async (msg) => {
     console.log(`[CHAT] Received message from ${msg.user}`);
+    // The message object from the client now includes a unique id
     const messageData = { ...msg, timestamp: new Date() };
     try {
         await db.collection('chat').add(messageData);
-        // Broadcast the new message to all clients
         io.emit('chatMessage', messageData);
     } catch (error) {
         console.error("[ERROR] Failed to save chat message:", error);
     }
   });
+
+  // --- NEW: Edit Message Handling ---
+  socket.on('editMessage', async ({ id, text }) => {
+    try {
+        const query = db.collection('chat').where('id', '==', id);
+        const snapshot = await query.get();
+
+        if (snapshot.empty) {
+            console.log(`[EDIT] Message with id ${id} not found.`);
+            return;
+        }
+        
+        const docRef = snapshot.docs[0].ref;
+        const docData = snapshot.docs[0].data();
+
+        await docRef.update({ text: text });
+        
+        // Broadcast the full updated message details
+        io.emit('messageEdited', { id, text, user: docData.user });
+        console.log(`[SUCCESS] Edited message with id ${id}`);
+    } catch (error) {
+        console.error("[ERROR] Failed to edit message:", error);
+    }
+  });
+
+  // --- NEW: Delete Message Handling ---
+  socket.on('deleteMessage', async ({ id }) => {
+      try {
+          const query = db.collection('chat').where('id', '==', id);
+          const snapshot = await query.get();
+
+          if (snapshot.empty) {
+              console.log(`[DELETE] Message with id ${id} not found.`);
+              return;
+          }
+
+          await snapshot.docs[0].ref.delete();
+
+          io.emit('messageDeleted', { id });
+          console.log(`[SUCCESS] Deleted message with id ${id}`);
+      } catch (error) {
+          console.error("[ERROR] Failed to delete message:", error);
+      }
+  });
+
 
   // --- Clear Chat Handling ---
   socket.on('clearChat', async () => {
@@ -99,19 +140,13 @@ io.on('connection', (socket) => {
         const chatCollection = db.collection('chat');
         const snapshot = await chatCollection.get();
         
-        if (snapshot.empty) {
-            console.log("[INFO] Chat collection is already empty.");
-            io.emit('chatCleared');
-            return;
-        }
+        if (snapshot.empty) return;
 
         const batch = db.batch();
         snapshot.docs.forEach(doc => {
             batch.delete(doc.ref);
         });
         await batch.commit();
-
-        console.log(`[SUCCESS] Deleted ${snapshot.size} chat messages.`);
         io.emit('chatCleared');
 
     } catch (error) {
