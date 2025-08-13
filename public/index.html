@@ -74,10 +74,8 @@
             #top-bar-center { display: none; }
             #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
-            /* CHANGE: Reduce outer padding */
             .app-container { padding: 10px 2px; }
             .lists-container { justify-content: space-between; }
-            /* CHANGE: Increase column width by 10% */
             .list-column { flex: 0 0 35%; padding: 0; box-shadow: none; background-color: transparent; }
             .rank-image { width: 100%; height: auto; }
             .rank-item { padding: 5px 0; }
@@ -133,19 +131,10 @@
             let isEditMode = false, editingItemId = null, isChatVisible = true;
             
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
-            
-            // CHANGE: New function to update the last read message timestamp
-            const updateLastReadMessage = () => {
-                const lastMessage = chatLog.querySelector('p:last-child');
-                if (lastMessage && lastMessage.dataset.messageId) {
-                    localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId);
-                }
-            };
-            
+            const updateLastReadMessage = () => { const lastMessage = chatLog.querySelector('p:last-child'); if (lastMessage && lastMessage.dataset.messageId) { localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId); } };
             openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; isChatVisible = true; stopChatNotification(); scrollToChatBottom(); updateLastReadMessage(); });
             minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; isChatVisible = false; });
             chatInput.addEventListener('focus', () => { stopChatNotification(); updateLastReadMessage(); });
-            
             clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
             const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
             const updateUserMessageColors = (user, newColor) => { document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => { el.style.color = newColor; }); };
@@ -232,13 +221,9 @@
                 scrollToChatBottom();
                 updateChatPreview();
                 if (window.innerWidth >= 901) { isChatVisible = true; chatContainer.style.display = 'flex'; } else { isChatVisible = false; chatContainer.style.display = 'none'; }
-                
-                // CHANGE: Check for unread messages on load
                 const lastReadId = Number(localStorage.getItem('lastReadMessageId')) || 0;
                 const lastMessage = history.length > 0 ? history[history.length - 1] : null;
-                if (lastMessage && lastMessage.id > lastReadId) {
-                    openChatBtn.classList.add('new-message-flash');
-                }
+                if (lastMessage && lastMessage.id > lastReadId) { openChatBtn.classList.add('new-message-flash'); }
             });
             socket.on('chatMessage', (msg) => { renderChatMessage(msg); scrollToChatBottom(); updateChatPreview(); const currentUser = sessionStorage.getItem('chatUsername'); if (!isChatVisible && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash'); });
             socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
@@ -255,7 +240,26 @@
             new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
+            
+            // CHANGE: Final fix for cropper viewMode
+            fileInput.addEventListener('change', (event) => {
+                const files = event.target.files;
+                if (files && files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imageToCrop.src = e.target.result;
+                        modal.style.display = 'flex';
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(imageToCrop, {
+                            aspectRatio: 1 / 1,
+                            viewMode: 1 // This prevents the crop box from exceeding the image bounds
+                        });
+                    };
+                    reader.readAsDataURL(files[0]);
+                }
+                fileInput.value = '';
+            });
+
             cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); if (editingItemId) { let itemA = listA_Items.find(i => i.id === editingItemId); let itemB = listB_Items.find(i => i.id === editingItemId); if (itemA) itemA.imageData = imageData; if (itemB) itemB.imageData = imageData; editingItemId = null; renderAllLists(); return; } const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
             const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
