@@ -58,29 +58,21 @@
             border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001;
             display: flex; flex-direction: column;
         }
-        #chat-header { display: flex; justify-content: flex-end; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
+        /* CHANGE: Make header a space-between container for color picker */
+        #chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
         #chat-header-buttons { display: flex; gap: 8px; }
+        #color-picker-container { display: flex; align-items: center; gap: 8px; }
+        #color-picker { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 60px; height: 25px; background-color: transparent; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; }
+        #color-picker::-webkit-color-swatch { border-radius: 3px; border: none; }
+        #color-picker::-moz-color-swatch { border-radius: 3px; border: none; }
         #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
         
-        /* CHANGE: Layout fix for long messages */
-        #chat-log p {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-            margin: 0 0 8px 0;
-        }
-        #chat-log p > span { /* The message text itself */
-             word-break: break-word;
-        }
-        .message-actions { /* The Edit/Delete buttons */
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        #chat-log p strong { color: var(--primary-color); font-weight: bold; }
+        #chat-log p { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 0 0 8px 0; }
+        #chat-log p > span { word-break: break-word; }
+        .message-actions { flex-shrink: 0; white-space: nowrap; }
         .message-actions button { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 5px; color: #6c757d; }
+        
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
@@ -115,6 +107,10 @@
     </div>
     <div id="chat-container">
         <div id="chat-header">
+            <div id="color-picker-container">
+                <label for="color-picker">Color</label>
+                <input type="color" id="color-picker" value="#007bff">
+            </div>
             <div id="chat-header-buttons">
                 <button id="clear-chat-btn">Clear</button>
                 <button id="minimize-chat-btn">Minimize</button>
@@ -136,13 +132,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
+
             const openChatBtn = document.getElementById('open-chat-btn');
             const chatContainer = document.getElementById('chat-container');
             const minimizeChatBtn = document.getElementById('minimize-chat-btn');
             const clearChatBtn = document.getElementById('clear-chat-btn');
             const chatLog = document.getElementById('chat-log');
             const chatInput = document.getElementById('chat-input');
-            
+            const colorPicker = document.getElementById('color-picker');
+
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             
             openChatBtn.addEventListener('click', () => {
@@ -150,33 +148,52 @@
                 stopChatNotification();
                 scrollToChatBottom();
             });
-            minimizeChatBtn.addEventListener('click', () => {
-                chatContainer.style.display = 'none';
-            });
+            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; });
             chatInput.addEventListener('focus', stopChatNotification);
             
             clearChatBtn.addEventListener('click', () => {
                 const password = prompt("Enter admin password to clear the entire chat:");
                 if (password === 'bricks') {
-                    if (window.confirm('ADMIN: Are you sure you want to delete the entire chat history for everyone?')) {
-                        socket.emit('clearChat');
-                    }
-                } else if (password !== null) {
-                    alert("Incorrect password.");
-                }
+                    if (window.confirm('ADMIN: Are you sure you want to delete the entire chat history?')) socket.emit('clearChat');
+                } else if (password !== null) alert("Incorrect password.");
             });
             
             const scrollToChatBottom = () => {
                 setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 0);
             };
 
+            // CHANGE: Color Picker Logic
+            const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
+            colorPicker.value = savedColor;
+
+            const updateAllMyMessageColors = (newColor) => {
+                const currentUser = sessionStorage.getItem('chatUsername');
+                if (!currentUser) return;
+                document.querySelectorAll(`strong[data-user="${currentUser}"]`).forEach(el => {
+                    el.style.color = newColor;
+                });
+            };
+
+            colorPicker.addEventListener('input', (e) => {
+                const newColor = e.target.value;
+                localStorage.setItem('chatUsernameColor', newColor);
+                updateAllMyMessageColors(newColor);
+            });
+
+            // --- RENDER & ACTION FUNCTIONS (WITH ADMIN LOGIC) ---
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
                 p.dataset.messageId = msg.id;
                 p.dataset.author = msg.user;
 
                 const messageContent = document.createElement('span');
-                messageContent.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
+                const strong = document.createElement('strong');
+                strong.textContent = `${msg.user}:`;
+                strong.dataset.user = msg.user; // For color picker targeting
+                strong.style.color = msg.color || '#007bff'; // Apply saved color
+                
+                messageContent.appendChild(strong);
+                messageContent.append(` ${msg.text}`);
                 p.appendChild(messageContent);
 
                 const actions = document.createElement('div');
@@ -190,74 +207,67 @@
                 const messageElement = e.target.closest('p');
                 if (!messageElement) return;
 
-                // CHANGE: Convert the message ID from the element back to a number
-                const messageId = Number(messageElement.dataset.messageId);
+                const messageId = Number(messageElement.dataset.messageId); // FIX: Ensure ID is a number
                 const messageAuthor = messageElement.dataset.author;
                 const currentUser = sessionStorage.getItem('chatUsername');
                 const isOwnMessage = (messageAuthor === currentUser);
                 const adminPassword = 'bricks';
 
                 const performDelete = () => {
-                    if (confirm('Are you sure you want to delete this message?')) {
-                        socket.emit('deleteMessage', { id: messageId });
-                    }
+                    if (confirm('Are you sure you want to delete this message?')) socket.emit('deleteMessage', { id: messageId });
                 };
                 
                 const performEdit = () => {
                     const currentText = messageElement.querySelector('span').innerText.split(': ')[1] || '';
                     const newText = prompt('Edit the message:', currentText);
-                    if (newText && newText.trim() !== '' && newText !== currentText) {
-                        socket.emit('editMessage', { id: messageId, text: newText });
-                    }
+                    if (newText && newText.trim() !== '' && newText !== currentText) socket.emit('editMessage', { id: messageId, text: newText });
                 };
 
                 if (e.target.classList.contains('delete-btn')) {
                     if (isOwnMessage) performDelete();
                     else {
-                        const password = prompt("Enter admin password to delete this message:");
+                        const password = prompt("Enter admin password to delete message:");
                         if (password === adminPassword) performDelete();
                         else if (password !== null) alert("Incorrect password.");
                     }
                 }
-
                 if (e.target.classList.contains('edit-btn')) {
                     if (isOwnMessage) performEdit();
                     else {
-                        const password = prompt("Enter admin password to edit this message:");
+                        const password = prompt("Enter admin password to edit message:");
                         if (password === adminPassword) performEdit();
                         else if (password !== null) alert("Incorrect password.");
                     }
                 }
             });
 
+            // --- SOCKET.IO LISTENERS ---
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
                 scrollToChatBottom();
             });
-
             socket.on('chatMessage', (msg) => {
                 renderChatMessage(msg);
                 scrollToChatBottom();
                 updateChatPreview();
                 const currentUser = sessionStorage.getItem('chatUsername');
-                if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) {
-                    openChatBtn.classList.add('new-message-flash');
+                if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash');
+            });
+            socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); });
+            socket.on('messageEdited', ({ id, text, user, color }) => {
+                const p = chatLog.querySelector(`[data-message-id='${id}']`);
+                if (p) {
+                    const strong = p.querySelector('strong');
+                    strong.style.color = color || '#007bff';
+                    p.querySelector('span').innerHTML = ''; // Clear old content
+                    p.querySelector('span').appendChild(strong);
+                    p.querySelector('span').append(` ${text}`);
                 }
             });
-
-            socket.on('messageDeleted', ({ id }) => {
-                const el = chatLog.querySelector(`[data-message-id='${id}']`);
-                if (el) el.remove();
-            });
-
-            socket.on('messageEdited', ({ id, text, user }) => {
-                const el = chatLog.querySelector(`[data-message-id='${id}'] span`);
-                if (el) el.innerHTML = `<strong>${user}:</strong> ${text}`;
-            });
-
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
+            // --- UNCHANGED JS ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
@@ -269,7 +279,7 @@
             uploadBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
             cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
-            const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now() }); chatInput.value = ''; } };
+            const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
             socket.on('connect', () => socket.emit('requestInitialData'));
