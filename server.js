@@ -10,11 +10,12 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 // --- 1. SETUP AND INITIALIZATION ---
-// FINAL CHANGE: Read credentials directly from the environment variable
+
+// FINAL FIX: This method ensures the credentials from your Render Environment Variable are correctly parsed and used.
 const serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 initializeApp({
-  credential: cert(serviceAccount),
+  credential: cert(serviceAccount), // Use the parsed service account
   projectId: 'bb-ranker',
   storageBucket: 'bb-ranker.appspot.com' 
 });
