@@ -16,7 +16,7 @@
             --notification-green: #28a745;
         }
 
-        /* --- BASE STYLES (DESKTOP) - UNCHANGED --- */
+        /* --- BASE STYLES (DESKTOP) --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--background-color);
@@ -62,10 +62,25 @@
         #chat-header-buttons { display: flex; gap: 8px; }
         #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
-        #chat-log p { display: flex; justify-content: space-between; align-items: center; margin: 0 0 8px 0; word-wrap: break-word; }
+        
+        /* CHANGE: Layout fix for long messages */
+        #chat-log p {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 0 0 8px 0;
+        }
+        #chat-log p > span { /* The message text itself */
+             word-break: break-word;
+        }
+        .message-actions { /* The Edit/Delete buttons */
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
         #chat-log p strong { color: var(--primary-color); font-weight: bold; }
         .message-actions button { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 5px; color: #6c757d; }
-        .message-actions button:hover { text-decoration: underline; }
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
@@ -75,27 +90,14 @@
             #top-bar { padding: 0 10px; }
             #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
-
             .app-container { padding: 10px; }
             .lists-container { justify-content: space-between; }
-            
-            /* CHANGE: Columns are now 20% smaller */
-            .list-column {
-                flex: 0 0 32%; /* 40% -> 32% */
-                padding: 0; box-shadow: none; background-color: transparent;
-            }
-
+            .list-column { flex: 0 0 32%; padding: 0; box-shadow: none; background-color: transparent; }
             .rank-image { width: 100%; height: auto; }
             .rank-item { padding: 5px 0; }
             .rank-number { font-size: 1.5em; padding: 0 5px; }
             .image-caption { font-size: 11px; }
-
-            #chat-container {
-                display: none; /* Hidden by default on mobile */
-                width: 100%; top: auto; bottom: 0; left: 0;
-                max-width: 100%; border-radius: 8px 8px 0 0;
-                transform: none;
-            }
+            #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
         }
     </style>
 </head>
@@ -134,7 +136,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
-
             const openChatBtn = document.getElementById('open-chat-btn');
             const chatContainer = document.getElementById('chat-container');
             const minimizeChatBtn = document.getElementById('minimize-chat-btn');
@@ -142,7 +143,6 @@
             const chatLog = document.getElementById('chat-log');
             const chatInput = document.getElementById('chat-input');
             
-            // --- CHAT VISIBILITY & NOTIFICATIONS ---
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             
             openChatBtn.addEventListener('click', () => {
@@ -170,23 +170,19 @@
                 setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 0);
             };
 
-            // --- RENDER & ACTION FUNCTIONS (WITH ADMIN LOGIC) ---
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
                 p.dataset.messageId = msg.id;
-                p.dataset.author = msg.user; // Store the author for permission checks
+                p.dataset.author = msg.user;
 
                 const messageContent = document.createElement('span');
                 messageContent.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
-                
                 p.appendChild(messageContent);
 
-                // Always add buttons, but the click handler will check for permission
                 const actions = document.createElement('div');
                 actions.className = 'message-actions';
                 actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
                 p.appendChild(actions);
-                
                 chatLog.appendChild(p);
             };
             
@@ -194,7 +190,8 @@
                 const messageElement = e.target.closest('p');
                 if (!messageElement) return;
 
-                const messageId = messageElement.dataset.messageId;
+                // CHANGE: Convert the message ID from the element back to a number
+                const messageId = Number(messageElement.dataset.messageId);
                 const messageAuthor = messageElement.dataset.author;
                 const currentUser = sessionStorage.getItem('chatUsername');
                 const isOwnMessage = (messageAuthor === currentUser);
@@ -207,43 +204,32 @@
                 };
                 
                 const performEdit = () => {
-                    const currentText = messageElement.querySelector('span').innerText.split(': ')[1];
+                    const currentText = messageElement.querySelector('span').innerText.split(': ')[1] || '';
                     const newText = prompt('Edit the message:', currentText);
                     if (newText && newText.trim() !== '' && newText !== currentText) {
                         socket.emit('editMessage', { id: messageId, text: newText });
                     }
                 };
 
-                // Handle Delete Click
                 if (e.target.classList.contains('delete-btn')) {
-                    if (isOwnMessage) {
-                        performDelete();
-                    } else { // It's someone else's message, ask for admin password
+                    if (isOwnMessage) performDelete();
+                    else {
                         const password = prompt("Enter admin password to delete this message:");
-                        if (password === adminPassword) {
-                            performDelete();
-                        } else if (password !== null) {
-                            alert("Incorrect password.");
-                        }
+                        if (password === adminPassword) performDelete();
+                        else if (password !== null) alert("Incorrect password.");
                     }
                 }
 
-                // Handle Edit Click
                 if (e.target.classList.contains('edit-btn')) {
-                    if (isOwnMessage) {
-                        performEdit();
-                    } else { // It's someone else's message, ask for admin password
+                    if (isOwnMessage) performEdit();
+                    else {
                         const password = prompt("Enter admin password to edit this message:");
-                        if (password === adminPassword) {
-                            performEdit();
-                        } else if (password !== null) {
-                            alert("Incorrect password.");
-                        }
+                        if (password === adminPassword) performEdit();
+                        else if (password !== null) alert("Incorrect password.");
                     }
                 }
             });
 
-            // --- SOCKET.IO LISTENERS ---
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -272,7 +258,6 @@
 
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
-            // --- The rest of the JS is unchanged and included for completeness ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
