@@ -10,10 +10,9 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 // --- 1. SETUP AND INITIALIZATION ---
-const serviceAccount = require('./serviceAccountKey.json');
+// CHANGE: We no longer need to require the key file directly.
+// Firebase will automatically find it via the GOOGLE_APPLICATION_CREDENTIALS environment variable.
 initializeApp({
-  credential: cert(serviceAccount),
-  // CHANGE: Updated with your new Project ID
   projectId: 'bb-ranker',
   storageBucket: 'bb-ranker.appspot.com' 
 });
@@ -26,6 +25,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
+// The rest of your file is completely unchanged...
 // --- 2. FILE UPLOAD HANDLING ---
 const upload = multer({
     storage: multer.memoryStorage(),
