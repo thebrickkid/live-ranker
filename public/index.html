@@ -141,8 +141,7 @@
             const clearChatBtn = document.getElementById('clear-chat-btn');
             const chatLog = document.getElementById('chat-log');
             const chatInput = document.getElementById('chat-input');
-            const username = sessionStorage.getItem('chatUsername');
-
+            
             // --- CHAT VISIBILITY & NOTIFICATIONS ---
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             
@@ -154,33 +153,39 @@
             minimizeChatBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'none';
             });
-            chatInput.addEventListener('focus', stopChatNotification); // Stop flashing when user clicks in chat box
+            chatInput.addEventListener('focus', stopChatNotification);
             
             clearChatBtn.addEventListener('click', () => {
-                if (window.confirm('Are you sure you want to delete the chat history?')) socket.emit('clearChat');
+                const password = prompt("Enter admin password to clear the entire chat:");
+                if (password === 'bricks') {
+                    if (window.confirm('ADMIN: Are you sure you want to delete the entire chat history for everyone?')) {
+                        socket.emit('clearChat');
+                    }
+                } else if (password !== null) {
+                    alert("Incorrect password.");
+                }
             });
             
             const scrollToChatBottom = () => {
                 setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 0);
             };
 
-            // --- RENDER & ACTION FUNCTIONS (WITH EDIT/DELETE) ---
+            // --- RENDER & ACTION FUNCTIONS (WITH ADMIN LOGIC) ---
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
-                p.dataset.messageId = msg.id; // Store message ID on the element
+                p.dataset.messageId = msg.id;
+                p.dataset.author = msg.user; // Store the author for permission checks
 
                 const messageContent = document.createElement('span');
                 messageContent.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
                 
                 p.appendChild(messageContent);
 
-                // Add Edit/Delete buttons if the message is from the current user
-                if (msg.user === username) {
-                    const actions = document.createElement('div');
-                    actions.className = 'message-actions';
-                    actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
-                    p.appendChild(actions);
-                }
+                // Always add buttons, but the click handler will check for permission
+                const actions = document.createElement('div');
+                actions.className = 'message-actions';
+                actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
+                p.appendChild(actions);
                 
                 chatLog.appendChild(p);
             };
@@ -188,19 +193,52 @@
             chatLog.addEventListener('click', (e) => {
                 const messageElement = e.target.closest('p');
                 if (!messageElement) return;
-                const messageId = messageElement.dataset.messageId;
 
-                if (e.target.classList.contains('delete-btn')) {
+                const messageId = messageElement.dataset.messageId;
+                const messageAuthor = messageElement.dataset.author;
+                const currentUser = sessionStorage.getItem('chatUsername');
+                const isOwnMessage = (messageAuthor === currentUser);
+                const adminPassword = 'bricks';
+
+                const performDelete = () => {
                     if (confirm('Are you sure you want to delete this message?')) {
                         socket.emit('deleteMessage', { id: messageId });
                     }
-                }
-
-                if (e.target.classList.contains('edit-btn')) {
+                };
+                
+                const performEdit = () => {
                     const currentText = messageElement.querySelector('span').innerText.split(': ')[1];
-                    const newText = prompt('Edit your message:', currentText);
+                    const newText = prompt('Edit the message:', currentText);
                     if (newText && newText.trim() !== '' && newText !== currentText) {
                         socket.emit('editMessage', { id: messageId, text: newText });
+                    }
+                };
+
+                // Handle Delete Click
+                if (e.target.classList.contains('delete-btn')) {
+                    if (isOwnMessage) {
+                        performDelete();
+                    } else { // It's someone else's message, ask for admin password
+                        const password = prompt("Enter admin password to delete this message:");
+                        if (password === adminPassword) {
+                            performDelete();
+                        } else if (password !== null) {
+                            alert("Incorrect password.");
+                        }
+                    }
+                }
+
+                // Handle Edit Click
+                if (e.target.classList.contains('edit-btn')) {
+                    if (isOwnMessage) {
+                        performEdit();
+                    } else { // It's someone else's message, ask for admin password
+                        const password = prompt("Enter admin password to edit this message:");
+                        if (password === adminPassword) {
+                            performEdit();
+                        } else if (password !== null) {
+                            alert("Incorrect password.");
+                        }
                     }
                 }
             });
@@ -216,7 +254,8 @@
                 renderChatMessage(msg);
                 scrollToChatBottom();
                 updateChatPreview();
-                if (chatContainer.style.display === 'none' && msg.user !== username) {
+                const currentUser = sessionStorage.getItem('chatUsername');
+                if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) {
                     openChatBtn.classList.add('new-message-flash');
                 }
             });
@@ -233,7 +272,7 @@
 
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
-            // --- The rest of your JS is unchanged and included for completeness ---
+            // --- The rest of the JS is unchanged and included for completeness ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
@@ -245,7 +284,7 @@
             uploadBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
             cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
-            const handleSendMessage = () => { if (!sessionStorage.getItem('chatUsername')) { const newName = prompt("Enter your name:", ""); if (newName) { sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { socket.emit('chatMessage', { user: sessionStorage.getItem('chatUsername'), text: text, id: Date.now() }); chatInput.value = ''; } };
+            const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now() }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
             socket.on('connect', () => socket.emit('requestInitialData'));
