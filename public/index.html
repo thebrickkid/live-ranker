@@ -16,44 +16,29 @@
             --notification-green: #28a745;
         }
 
-        /* --- BASE STYLES (DESKTOP) --- */
+        /* --- BASE STYLES (DESKTOP) - UNCHANGED --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--background-color);
             margin: 0;
             padding-top: var(--top-bar-height);
         }
-
         #top-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--top-bar-height);
-            background-color: var(--container-bg);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-            box-sizing: border-box;
+            position: fixed; top: 0; left: 0; width: 100%; height: var(--top-bar-height);
+            background-color: var(--container-bg); display: flex; justify-content: space-between;
+            align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000; box-sizing: border-box;
         }
         #chat-preview { display: none; }
         .button-top-bar {
             background-color: var(--primary-color); color: white; border: none; padding: 8px 16px;
             font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
         }
-        
-        /* CHANGE: New animation for chat notification */
         @keyframes flash-green {
             0%, 100% { background-color: var(--primary-color); }
             50% { background-color: var(--notification-green); }
         }
-        .new-message-flash {
-            animation: flash-green 1.5s infinite;
-        }
-        
+        .new-message-flash { animation: flash-green 1.5s infinite; }
         .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
@@ -61,7 +46,6 @@
         .rank-list { list-style-type: none; padding: 0; margin: 0; }
         .rank-item { display: flex; align-items: center; padding: 10px 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); cursor: grab; }
         .rank-item:last-child { border-bottom: none; }
-        
         #rank-list-b .rank-item { flex-direction: row-reverse; }
         .item-content { display: flex; flex-direction: column; align-items: center; }
         .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; }
@@ -69,20 +53,19 @@
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
         
         #chat-container {
-            position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 450px;
-            background-color: white; border: 1px solid var(--border-color);
-            border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-            z-index: 1001;
-            display: flex; /* Desktop chat is visible by default */
-            flex-direction: column;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 450px; background-color: white; border: 1px solid var(--border-color);
+            border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001;
+            display: flex; flex-direction: column;
         }
         #chat-header { display: flex; justify-content: flex-end; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
         #chat-header-buttons { display: flex; gap: 8px; }
         #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
+        #chat-log p { display: flex; justify-content: space-between; align-items: center; margin: 0 0 8px 0; word-wrap: break-word; }
         #chat-log p strong { color: var(--primary-color); font-weight: bold; }
+        .message-actions button { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 5px; color: #6c757d; }
+        .message-actions button:hover { text-decoration: underline; }
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
@@ -96,12 +79,10 @@
             .app-container { padding: 10px; }
             .lists-container { justify-content: space-between; }
             
-            /* CHANGE: Make columns much narrower to create a large gap */
+            /* CHANGE: Columns are now 20% smaller */
             .list-column {
-                flex: 0 0 40%; /* Each column is 40% wide, leaving a 20% gap */
-                padding: 0;
-                box-shadow: none;
-                background-color: transparent;
+                flex: 0 0 32%; /* 40% -> 32% */
+                padding: 0; box-shadow: none; background-color: transparent;
             }
 
             .rank-image { width: 100%; height: auto; }
@@ -109,9 +90,8 @@
             .rank-number { font-size: 1.5em; padding: 0 5px; }
             .image-caption { font-size: 11px; }
 
-            /* CHANGE: Hide desktop chat by default on mobile */
             #chat-container {
-                display: none; 
+                display: none; /* Hidden by default on mobile */
                 width: 100%; top: auto; bottom: 0; left: 0;
                 max-width: 100%; border-radius: 8px 8px 0 0;
                 transform: none;
@@ -125,14 +105,12 @@
         <div id="chat-preview"></div>
         <button id="open-chat-btn" class="button-top-bar">Chat</button>
     </div>
-
     <div class="app-container">
         <div class="lists-container">
             <div class="list-column"> <h2 class="column-header">Ben</h2> <ul id="rank-list-a" class="rank-list"></ul> </div>
             <div class="list-column"> <h2 class="column-header">Steve</h2> <ul id="rank-list-b" class="rank-list"></ul> </div>
         </div>
     </div>
-    
     <div id="chat-container">
         <div id="chat-header">
             <div id="chat-header-buttons">
@@ -146,7 +124,6 @@
             <button id="chat-send-btn">Send</button>
         </div>
     </div>
-    
     <div id="crop-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002;"> <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center;"> <h2>Crop Image to Square</h2> <div style="margin: 20px 0; max-width: 80vw; max-height: 70vh;"><img id="image-to-crop" style="display: block; max-width: 100%;"></div> <button id="crop-save-btn" class="button-primary">Crop Image</button> </div> </div>
     <input type="file" id="file-input" accept="image/*" style="display: none;">
 
@@ -163,36 +140,72 @@
             const minimizeChatBtn = document.getElementById('minimize-chat-btn');
             const clearChatBtn = document.getElementById('clear-chat-btn');
             const chatLog = document.getElementById('chat-log');
+            const chatInput = document.getElementById('chat-input');
+            const username = sessionStorage.getItem('chatUsername');
 
+            // --- CHAT VISIBILITY & NOTIFICATIONS ---
+            const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
+            
             openChatBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'flex';
-                // CHANGE: Stop flashing when chat is opened
-                openChatBtn.classList.remove('new-message-flash');
+                stopChatNotification();
+                scrollToChatBottom();
             });
             minimizeChatBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'none';
             });
+            chatInput.addEventListener('focus', stopChatNotification); // Stop flashing when user clicks in chat box
+            
             clearChatBtn.addEventListener('click', () => {
-                if (window.confirm('Are you sure you want to delete the chat history?')) {
-                    socket.emit('clearChat');
+                if (window.confirm('Are you sure you want to delete the chat history?')) socket.emit('clearChat');
+            });
+            
+            const scrollToChatBottom = () => {
+                setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 0);
+            };
+
+            // --- RENDER & ACTION FUNCTIONS (WITH EDIT/DELETE) ---
+            const renderChatMessage = (msg) => {
+                const p = document.createElement('p');
+                p.dataset.messageId = msg.id; // Store message ID on the element
+
+                const messageContent = document.createElement('span');
+                messageContent.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
+                
+                p.appendChild(messageContent);
+
+                // Add Edit/Delete buttons if the message is from the current user
+                if (msg.user === username) {
+                    const actions = document.createElement('div');
+                    actions.className = 'message-actions';
+                    actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
+                    p.appendChild(actions);
+                }
+                
+                chatLog.appendChild(p);
+            };
+            
+            chatLog.addEventListener('click', (e) => {
+                const messageElement = e.target.closest('p');
+                if (!messageElement) return;
+                const messageId = messageElement.dataset.messageId;
+
+                if (e.target.classList.contains('delete-btn')) {
+                    if (confirm('Are you sure you want to delete this message?')) {
+                        socket.emit('deleteMessage', { id: messageId });
+                    }
+                }
+
+                if (e.target.classList.contains('edit-btn')) {
+                    const currentText = messageElement.querySelector('span').innerText.split(': ')[1];
+                    const newText = prompt('Edit your message:', currentText);
+                    if (newText && newText.trim() !== '' && newText !== currentText) {
+                        socket.emit('editMessage', { id: messageId, text: newText });
+                    }
                 }
             });
 
-            // CHANGE: Function to reliably scroll chat to bottom
-            const scrollToChatBottom = () => {
-                // Use a tiny timeout to allow the DOM to update before scrolling
-                setTimeout(() => {
-                    chatLog.scrollTop = chatLog.scrollHeight;
-                }, 0);
-            };
-
-            const renderChatMessage = (msg) => {
-                const msgElement = document.createElement('p');
-                msgElement.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
-                chatLog.appendChild(msgElement);
-                scrollToChatBottom();
-            };
-            
+            // --- SOCKET.IO LISTENERS ---
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -201,32 +214,38 @@
 
             socket.on('chatMessage', (msg) => {
                 renderChatMessage(msg);
+                scrollToChatBottom();
                 updateChatPreview();
-
-                // CHANGE: Logic for new message notification
-                const myUsername = sessionStorage.getItem('chatUsername');
-                if (chatContainer.style.display === 'none' && msg.user !== myUsername) {
+                if (chatContainer.style.display === 'none' && msg.user !== username) {
                     openChatBtn.classList.add('new-message-flash');
                 }
             });
 
-            socket.on('chatCleared', () => {
-                chatLog.innerHTML = '';
+            socket.on('messageDeleted', ({ id }) => {
+                const el = chatLog.querySelector(`[data-message-id='${id}']`);
+                if (el) el.remove();
             });
 
-            // --- The rest of the JS is unchanged and included for completeness ---
-            const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatInput = document.getElementById('chat-input'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
-            let cropper = null, listA_Items = [], listB_Items = [], username = sessionStorage.getItem('chatUsername');
+            socket.on('messageEdited', ({ id, text, user }) => {
+                const el = chatLog.querySelector(`[data-message-id='${id}'] span`);
+                if (el) el.innerHTML = `<strong>${user}:</strong> ${text}`;
+            });
+
+            socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
+
+            // --- The rest of your JS is unchanged and included for completeness ---
+            const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
+            let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
             const renderSingleList = (listElement, itemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
             const renderAllLists = () => { renderSingleList(rankListA, listA_Items); renderSingleList(rankListB, listB_Items); };
-            const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
+            const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
             new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
             cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
-            const handleSendMessage = () => { if (!username) { const newName = prompt("Enter your name:", ""); if (newName) { username = newName; sessionStorage.setItem('chatUsername', username); } else { return; } } const text = chatInput.value.trim(); if (text) { socket.emit('chatMessage', { user: username, text: text }); chatInput.value = ''; } };
+            const handleSendMessage = () => { if (!sessionStorage.getItem('chatUsername')) { const newName = prompt("Enter your name:", ""); if (newName) { sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { socket.emit('chatMessage', { user: sessionStorage.getItem('chatUsername'), text: text, id: Date.now() }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
             socket.on('connect', () => socket.emit('requestInitialData'));
