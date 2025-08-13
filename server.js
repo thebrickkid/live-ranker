@@ -23,7 +23,6 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  // COMBINED initial data request
   socket.on('requestInitialData', async () => {
     try {
       const chatSnapshot = await db.collection('chat').orderBy('timestamp').get();
@@ -34,13 +33,10 @@ io.on('connection', (socket) => {
       const listBSnapshot = await db.collection('rankingLists').doc('listB').get();
       const listA = listASnapshot.exists ? listASnapshot.data().items : [];
       const listB = listBSnapshot.exists ? listBSnapshot.data().items : [];
-
       const headersDoc = await db.collection('appState').doc('headers').get();
       const headers = headersDoc.exists ? headersDoc.data() : { headerA: 'Ben', headerB: 'Steve' };
       
-      // Send lists and headers together
       socket.emit('initialData', { lists: { listA, listB }, headers });
-
     } catch (error) { console.error("Initial data fetch error:", error); }
   });
 
@@ -52,7 +48,6 @@ io.on('connection', (socket) => {
     } catch (error) { console.error("Update lists error:", error); }
   });
 
-  // NEW: Handle header updates
   socket.on('updateHeaders', async (headers) => {
       try {
           await db.collection('appState').doc('headers').set(headers);
@@ -73,11 +68,9 @@ io.on('connection', (socket) => {
         const query = db.collection('chat').where('id', '==', Number(id));
         const snapshot = await query.get();
         if (snapshot.empty) return;
-        
         const docRef = snapshot.docs[0].ref;
         const docData = snapshot.docs[0].data();
         await docRef.update({ text: text });
-        
         io.emit('messageEdited', { id, text, user: docData.user, color: docData.color });
     } catch (error) { console.error("Edit message error:", error); }
   });
@@ -98,13 +91,10 @@ io.on('connection', (socket) => {
   socket.on('userColorChange', ({ user, color }) => {
       if (!user) return;
       socket.broadcast.emit('userColorUpdated', { user, color });
-      
       db.collection('chat').where('user', '==', user).get().then(snapshot => {
           if (snapshot.empty) return;
           const batch = db.batch();
-          snapshot.docs.forEach(doc => {
-              batch.update(doc.ref, { color: color });
-          });
+          snapshot.docs.forEach(doc => { batch.update(doc.ref, { color: color }); });
           batch.commit().catch(err => console.error("Batch color update error:", err));
       });
   });
