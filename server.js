@@ -10,9 +10,11 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 // --- 1. SETUP AND INITIALIZATION ---
-// CHANGE: We no longer need to require the key file directly.
-// Firebase will automatically find it via the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+// FINAL CHANGE: Read credentials directly from the environment variable
+const serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+
 initializeApp({
+  credential: cert(serviceAccount),
   projectId: 'bb-ranker',
   storageBucket: 'bb-ranker.appspot.com' 
 });
@@ -25,7 +27,6 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-// The rest of your file is completely unchanged...
 // --- 2. FILE UPLOAD HANDLING ---
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -40,30 +41,22 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
         try {
             const oldFileName = req.body.oldImageUrl.split('/').pop().split('?')[0];
             if (oldFileName) await bucket.file(decodeURIComponent(oldFileName)).delete();
-            console.log(`[STORAGE] Deleted old file: ${oldFileName}`);
         } catch (error) {
             console.error("Failed to delete old image, it might not exist:", error.message);
         }
     }
-
     const fileName = `${uuidv4()}.jpg`;
     const file = bucket.file(fileName);
-
-    const stream = file.createWriteStream({
-        metadata: { contentType: req.file.mimetype },
-    });
-
+    const stream = file.createWriteStream({ metadata: { contentType: req.file.mimetype } });
     stream.on('error', (err) => {
         console.error('File stream error:', err);
         res.status(500).json({ error: 'Failed to upload image.' });
     });
-
     stream.on('finish', async () => {
         await file.makePublic();
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
         res.status(200).json({ imageUrl: publicUrl });
     });
-
     stream.end(req.file.buffer);
 });
 
