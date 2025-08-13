@@ -46,7 +46,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMessage', async (msg) => {
-    // CHANGE: The msg object now contains a 'color' property
     const messageData = { ...msg, timestamp: new Date() };
     try {
         await db.collection('chat').add(messageData);
@@ -64,7 +63,6 @@ io.on('connection', (socket) => {
         const docData = snapshot.docs[0].data();
         await docRef.update({ text: text });
         
-        // CHANGE: Broadcast the color back so it doesn't get lost on edit
         io.emit('messageEdited', { id, text, user: docData.user, color: docData.color });
     } catch (error) { console.error("Edit message error:", error); }
   });
@@ -77,6 +75,22 @@ io.on('connection', (socket) => {
           await snapshot.docs[0].ref.delete();
           io.emit('messageDeleted', { id });
       } catch (error) { console.error("Delete message error:", error); }
+  });
+  
+  // CHANGE: New listener for real-time color changes
+  socket.on('userColorChange', ({ user, color }) => {
+      // Broadcast to all OTHER clients that a user's color has changed
+      socket.broadcast.emit('userColorUpdated', { user, color });
+      
+      // Update the color for all of that user's messages in the database
+      db.collection('chat').where('user', '==', user).get().then(snapshot => {
+          if (snapshot.empty) return;
+          const batch = db.batch();
+          snapshot.docs.forEach(doc => {
+              batch.update(doc.ref, { color: color });
+          });
+          batch.commit();
+      });
   });
 
   socket.on('clearChat', async () => {

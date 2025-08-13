@@ -8,7 +8,6 @@
     <style>
         :root {
             --primary-color: #007bff;
-            --primary-hover: #0056b3;
             --background-color: #f0f2f5;
             --container-bg: #ffffff;
             --border-color: #e0e0e0;
@@ -39,7 +38,9 @@
             50% { background-color: var(--notification-green); }
         }
         .new-message-flash { animation: flash-green 1.5s infinite; }
-        .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* CHANGE: App container is now wider */
+        .app-container { max-width: 1500px; margin: 0 auto; padding: 20px; }
         .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
         .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: #6c757d; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
@@ -52,13 +53,13 @@
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
         
+        /* CHANGE: Chat is now wider */
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 450px; background-color: white; border: 1px solid var(--border-color);
+            width: 750px; background-color: white; border: 1px solid var(--border-color);
             border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001;
             display: flex; flex-direction: column;
         }
-        /* CHANGE: Make header a space-between container for color picker */
         #chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
         #chat-header-buttons { display: flex; gap: 8px; }
         #color-picker-container { display: flex; align-items: center; gap: 8px; }
@@ -67,12 +68,10 @@
         #color-picker::-moz-color-swatch { border-radius: 3px; border: none; }
         #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
-        
         #chat-log p { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 0 0 8px 0; }
         #chat-log p > span { word-break: break-word; }
         .message-actions { flex-shrink: 0; white-space: nowrap; }
         .message-actions button { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 5px; color: #6c757d; }
-        
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
@@ -159,43 +158,38 @@
             });
             
             const scrollToChatBottom = () => {
-                setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 0);
+                setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); // Small delay for reliability
             };
 
-            // CHANGE: Color Picker Logic
-            const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
-            colorPicker.value = savedColor;
-
-            const updateAllMyMessageColors = (newColor) => {
-                const currentUser = sessionStorage.getItem('chatUsername');
-                if (!currentUser) return;
-                document.querySelectorAll(`strong[data-user="${currentUser}"]`).forEach(el => {
+            const updateUserMessageColors = (user, newColor) => {
+                document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => {
                     el.style.color = newColor;
                 });
             };
 
+            const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
+            colorPicker.value = savedColor;
             colorPicker.addEventListener('input', (e) => {
                 const newColor = e.target.value;
+                const currentUser = sessionStorage.getItem('chatUsername');
                 localStorage.setItem('chatUsernameColor', newColor);
-                updateAllMyMessageColors(newColor);
+                updateUserMessageColors(currentUser, newColor);
+                // CHANGE: Emit color change to other users
+                socket.emit('userColorChange', { user: currentUser, color: newColor });
             });
 
-            // --- RENDER & ACTION FUNCTIONS (WITH ADMIN LOGIC) ---
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
                 p.dataset.messageId = msg.id;
                 p.dataset.author = msg.user;
-
                 const messageContent = document.createElement('span');
                 const strong = document.createElement('strong');
                 strong.textContent = `${msg.user}:`;
-                strong.dataset.user = msg.user; // For color picker targeting
-                strong.style.color = msg.color || '#007bff'; // Apply saved color
-                
+                strong.dataset.user = msg.user;
+                strong.style.color = msg.color || '#007bff';
                 messageContent.appendChild(strong);
                 messageContent.append(` ${msg.text}`);
                 p.appendChild(messageContent);
-
                 const actions = document.createElement('div');
                 actions.className = 'message-actions';
                 actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
@@ -207,7 +201,7 @@
                 const messageElement = e.target.closest('p');
                 if (!messageElement) return;
 
-                const messageId = Number(messageElement.dataset.messageId); // FIX: Ensure ID is a number
+                const messageId = Number(messageElement.dataset.messageId);
                 const messageAuthor = messageElement.dataset.author;
                 const currentUser = sessionStorage.getItem('chatUsername');
                 const isOwnMessage = (messageAuthor === currentUser);
@@ -224,24 +218,33 @@
                 };
 
                 if (e.target.classList.contains('delete-btn')) {
-                    if (isOwnMessage) performDelete();
-                    else {
-                        const password = prompt("Enter admin password to delete message:");
-                        if (password === adminPassword) performDelete();
-                        else if (password !== null) alert("Incorrect password.");
+                    if (isOwnMessage) {
+                        performDelete();
+                    } else {
+                        const password = prompt("Enter admin password to delete this message:");
+                        if (password === adminPassword) {
+                            alert("Password correct! Sending delete request..."); // Debugging alert
+                            performDelete();
+                        } else if (password !== null) {
+                            alert("Incorrect password.");
+                        }
                     }
                 }
                 if (e.target.classList.contains('edit-btn')) {
-                    if (isOwnMessage) performEdit();
-                    else {
-                        const password = prompt("Enter admin password to edit message:");
-                        if (password === adminPassword) performEdit();
-                        else if (password !== null) alert("Incorrect password.");
+                    if (isOwnMessage) {
+                        performEdit();
+                    } else {
+                        const password = prompt("Enter admin password to edit this message:");
+                        if (password === adminPassword) {
+                            alert("Password correct! Sending edit request..."); // Debugging alert
+                            performEdit();
+                        } else if (password !== null) {
+                            alert("Incorrect password.");
+                        }
                     }
                 }
             });
 
-            // --- SOCKET.IO LISTENERS ---
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -254,20 +257,28 @@
                 const currentUser = sessionStorage.getItem('chatUsername');
                 if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash');
             });
-            socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); });
+            socket.on('messageDeleted', ({ id }) => {
+                const el = chatLog.querySelector(`[data-message-id='${id}']`);
+                if (el) el.remove();
+                updateChatPreview(); // CHANGE: Update preview after a delete
+            });
             socket.on('messageEdited', ({ id, text, user, color }) => {
                 const p = chatLog.querySelector(`[data-message-id='${id}']`);
                 if (p) {
                     const strong = p.querySelector('strong');
                     strong.style.color = color || '#007bff';
-                    p.querySelector('span').innerHTML = ''; // Clear old content
+                    p.querySelector('span').innerHTML = '';
                     p.querySelector('span').appendChild(strong);
                     p.querySelector('span').append(` ${text}`);
                 }
+                updateChatPreview();
+            });
+            // CHANGE: Listen for color updates from other users
+            socket.on('userColorUpdated', ({ user, color }) => {
+                updateUserMessageColors(user, color);
             });
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
-            // --- UNCHANGED JS ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
