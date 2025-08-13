@@ -28,128 +28,85 @@
 
         #top-bar { display: none; }
 
-        .app-container { max-width: 1800px; margin: 0 auto; }
+        .app-container { max-width: 1200px; margin: 0 auto; } /* Centered container */
         .controls { text-align: center; margin-bottom: 25px; }
         .button-primary { background-color: var(--primary-color); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; }
         .button-primary:hover { background-color: var(--primary-hover); }
 
-        /* DESKTOP: Huge gap to ensure chat fits */
-        .lists-container { display: flex; justify-content: center; gap: 150px; align-items: flex-start; }
-        .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 0 1 auto; }
+        /* CHANGE: Columns pushed to the edges */
+        .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         
+        .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 0 1 auto; }
         .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: var(--column-header-color); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
         .rank-list { list-style-type: none; padding: 0; margin: 0; min-height: 100px; }
-
-        /* DESKTOP: No border on rank items, just a bottom line */
-        .rank-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 5px; /* More vertical, less horizontal padding */
-            margin-bottom: 10px;
-            background-color: transparent;
-            border-bottom: 1px solid var(--border-color); /* Separator line instead of a box */
-            cursor: grab;
-            position: relative;
-        }
-        .rank-item:last-child { border-bottom: none; } /* Remove line from last item */
-
+        .rank-item { display: flex; align-items: center; padding: 10px 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); cursor: grab; position: relative; }
+        .rank-item:last-child { border-bottom: none; }
+        
         /* DESKTOP: Right-align the right column */
-        #rank-list-b .rank-item {
-            flex-direction: row-reverse; /* Flips the order of number and content */
-        }
-        #rank-list-b .item-content {
-            align-items: flex-end; /* Aligns caption to the right */
-        }
+        #rank-list-b .rank-item { flex-direction: row-reverse; }
+        #rank-list-b .item-content { align-items: flex-end; }
         
         .rank-item:active { cursor: grabbing; }
-        .rank-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #ccc;
-            padding: 0 10px; /* TIGHTER: 5-10px space */
-            flex-shrink: 0;
-        }
+        .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; flex-shrink: 0; }
         .item-content { display: flex; flex-direction: column; min-width: 0; }
-        
-        /* DESKTOP: Bigger images */
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
-        
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6; font-size: 14px; font-style: italic; color: #495057; text-align: center; word-break: break-all; }
         .image-caption a { color: var(--primary-color); text-decoration: none; }
         .image-caption a:hover { text-decoration: underline; }
         .delete-btn { position: absolute; top: 0px; right: -25px; width: 25px; height: 25px; background-color: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 25px; text-align: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease; transform: scale(0.8); }
-        #rank-list-b .delete-btn { right: auto; left: -25px; } /* Position delete button on the other side */
+        #rank-list-b .delete-btn { right: auto; left: -25px; }
         .rank-item:hover .delete-btn { opacity: 1; transform: scale(1); }
         .sortable-ghost { opacity: 0.4; background: #c8ebfb; }
         .empty-message { text-align: center; color: #888; padding: 40px; font-size: 1.2em; }
         
-        .modal-overlay, #chat-container { /* Unchanged */ }
-        .modal-content, .crop-container, #image-to-crop { /* Unchanged */ }
-        #chat-container, #chat-header, #chat-header-buttons, #clear-chat-btn, #minimize-chat-btn, #chat-log, #chat-input-area, #chat-input, #chat-send-btn { /* Unchanged */}
+        .modal-overlay { /* ... Unchanged ... */ }
+        .modal-content, .crop-container, #image-to-crop { /* ... Unchanged ... */ }
+
+        /* CHANGE: Wider chat window */
+        #chat-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 450px; /* Wider chat */
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+        #chat-header, #chat-header-buttons, #clear-chat-btn, #minimize-chat-btn, #chat-log, #chat-input-area, #chat-input, #chat-send-btn { /* ... Unchanged ... */ }
 
         /* --- MOBILE OVERRIDES --- */
         @media (max-width: 900px) {
+            .app-container { max-width: 100%; }
             body { padding: var(--top-bar-height) 5px 20px 5px; }
             .controls { display: none; }
             #top-bar { /* ... Unchanged ... */ }
             #chat-container { /* ... Unchanged popup style for mobile ... */ }
             
-            /* MOBILE: Force space between columns for scrolling */
-            .lists-container {
-                justify-content: space-between; /* Pushes columns to the edges */
-                gap: 0;
-            }
+            /* MOBILE: Columns side-by-side with a gap */
+            .lists-container { justify-content: space-between; }
+            .list-column { padding: 5px; flex: 0 0 48%; }
+            
+            /* MOBILE: Mimic desktop style */
+            .rank-item { border: none; border-bottom: 1px solid var(--border-color); padding: 5px 0; }
+            #rank-list-b .item-content { align-items: flex-end; }
+            #rank-list-b .rank-item { flex-direction: row-reverse; }
 
-            .list-column {
-                padding: 5px;
-                flex: 0 0 48%; /* Each column takes up 48%, leaving 4% gap */
-            }
-            /* MOBILE: Remove all borders on items */
-            .rank-item {
-                border: none;
-                padding: 5px 0;
-            }
-
-            /* MOBILE: Reset right-alignment for simplicity */
-            #rank-list-b .rank-item { flex-direction: row; }
-            #rank-list-b .item-content { align-items: center; }
-
-            .rank-number {
-                font-size: 1.5em;
-                padding: 0 5px;
-            }
-            .rank-image {
-                width: 100px; 
-                height: 100px;
-            }
-            .image-caption {
-                font-size: 11px;
-                padding: 3px 5px;
-            }
-             /* MOBILE: Reposition delete buttons */
+            .rank-number { font-size: 1.5em; padding: 0 5px; }
+            .rank-image { width: 120px; height: 120px; } /* Slightly larger for mobile */
+            .image-caption { font-size: 11px; padding: 3px 5px; }
+            
+            /* MOBILE: Reposition delete buttons */
             .delete-btn { top: -5px; right: 0px; }
-            #rank-list-b .delete-btn { right: 0px; left: auto; }
+            #rank-list-b .delete-btn { right: auto; left: 0px; }
         }
         /* All other mobile styles like #top-bar, chat popups, etc. remain as they were. */
-        #top-bar {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: var(--top-bar-height);
-            background-color: var(--container-bg); justify-content: space-between; align-items: center;
-            padding: 0 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; box-sizing: border-box;
-        }
-        #chat-preview {
-            flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden;
-            white-space: nowrap; padding: 0 10px;
-        }
-        #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
-        .button-top-bar {
-            background-color: var(--primary-color); color: white; border: none; padding: 6px 12px;
-            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer;
-            transition: background-color 0.2s ease; white-space: nowrap;
-        }
-        @media (max-width: 900px) { #top-bar { display: flex; } }
-        #chat-container { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 350px; background-color: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001; display: flex; flex-direction: column; }
-        #chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); font-weight: bold; color: var(--column-header-color); } #chat-header-buttons { display: flex; gap: 8px; } #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; } #clear-chat-btn:hover, #minimize-chat-btn:hover { background: #5a6268; } #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; } #chat-log p { margin: 0 0 8px 0; word-wrap: break-word; } #chat-log strong { color: var(--primary-color); } #chat-input-area { display: flex; border-top: 1px solid var(--border-color); } #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; } #chat-input:focus { outline: none; } #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease; } #chat-send-btn:hover { background-color: var(--primary-hover); }
-        @media (max-width: 900px) { #chat-container { top: auto; bottom: 0; left: 0; width: 100%; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; display: none; } }
+        #top-bar { display: none; position: fixed; top: 0; left: 0; width: 100%; height: var(--top-bar-height); background-color: var(--container-bg); justify-content: space-between; align-items: center; padding: 0 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; box-sizing: border-box; } #chat-preview { flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; } #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; } .button-top-bar { background-color: var(--primary-color); color: white; border: none; padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; white-space: nowrap; } @media (max-width: 900px) { #top-bar { display: flex; } }
+        #chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); font-weight: bold; color: var(--column-header-color); } #chat-header-buttons { display: flex; gap: 8px; } #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; } #clear-chat-btn:hover, #minimize-chat-btn:hover { background: #5a6268; } #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; } #chat-log p { margin: 0 0 8px 0; word-wrap: break-word; } #chat-log strong { color: var(--primary-color); } #chat-input-area { display: flex; border-top: 1px solid var(--border-color); } #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; } #chat-input:focus { outline: none; } #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease; } #chat-send-btn:hover { background-color: var(--primary-hover); } @media (max-width: 900px) { #chat-container { width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; display: none; } }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1002; } .modal-content { background-color: white; padding: 20px; border-radius: 8px; text-align: center; } .crop-container { margin: 20px 0; max-width: 80vw; max-height: 70vh; } #image-to-crop { display: block; max-width: 100%; }
 
     </style>
@@ -215,16 +172,16 @@
                 const msgElement = document.createElement('p');
                 msgElement.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
                 chatLog.appendChild(msgElement);
-                // CHANGE: Do not scroll to bottom automatically
-                // chatLog.scrollTop = chatLog.scrollHeight; 
+                // CHANGE: Scroll to bottom on new message
+                chatLog.scrollTop = chatLog.scrollHeight; 
                 updateChatPreview();
             };
             
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
-                // CHANGE: Ensure it's at the top on load
-                chatLog.scrollTop = 0;
+                // CHANGE: Scroll to bottom when history loads
+                chatLog.scrollTop = chatLog.scrollHeight;
             });
             
             cropAndSaveBtn.addEventListener('click', () => {
@@ -237,7 +194,6 @@
                 const description = prompt("Enter a name or description:", "");
                 if (description === null) return;
                 
-                // CHANGE: Ask for Instagram username specifically
                 const instaUser = prompt("Enter Instagram username (optional, without the '@'):", "");
                 let instaLink = "";
                 if (instaUser && instaUser.trim() !== "") {
@@ -248,7 +204,7 @@
                     id: Date.now(),
                     imageData: imageData,
                     text: description || "",
-                    link: instaLink, // Use the constructed Instagram link
+                    link: instaLink,
                 };
                 
                 const newListA = [...listA_Items, JSON.parse(JSON.stringify(newItem))];
@@ -256,7 +212,7 @@
                 socket.emit('updateLists', { listA: newListA, listB: newListB });
             });
 
-            // --- All other functions are unchanged and included for completeness ---
+            // --- All other functions are unchanged ---
             const renderSingleList = (listElement, emptyMessageElement, itemsArray) => { listElement.innerHTML = ''; emptyMessageElement.style.display = itemsArray.length === 0 ? 'block' : 'none'; if(itemsArray.length === 0) emptyMessageElement.textContent = "List is empty."; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item)); }); updateRankNumbers(listElement); };
             const renderAllLists = () => { renderSingleList(rankListA, emptyMessageA, listA_Items); renderSingleList(rankListB, emptyMessageB, listB_Items); };
             const updateRankNumbers = (listElement) => { const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
