@@ -8,10 +8,12 @@
     <style>
         :root {
             --primary-color: #007bff;
+            --primary-hover: #0056b3;
             --background-color: #f0f2f5;
             --container-bg: #ffffff;
             --border-color: #e0e0e0;
             --top-bar-height: 60px;
+            --notification-green: #28a745;
         }
 
         /* --- BASE STYLES (DESKTOP) --- */
@@ -40,7 +42,16 @@
         #chat-preview { display: none; }
         .button-top-bar {
             background-color: var(--primary-color); color: white; border: none; padding: 8px 16px;
-            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer;
+            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
+        }
+        
+        /* CHANGE: New animation for chat notification */
+        @keyframes flash-green {
+            0%, 100% { background-color: var(--primary-color); }
+            50% { background-color: var(--notification-green); }
+        }
+        .new-message-flash {
+            animation: flash-green 1.5s infinite;
         }
         
         .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
@@ -57,7 +68,6 @@
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
         
-        /* DESKTOP: Chat window always visible and floating */
         #chat-container {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -65,45 +75,43 @@
             background-color: white; border: 1px solid var(--border-color);
             border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15);
             z-index: 1001;
-            display: flex; /* Always visible by default */
+            display: flex; /* Desktop chat is visible by default */
             flex-direction: column;
         }
-
-        #chat-header {
-            display: flex;
-            justify-content: flex-end; /* Pushes buttons to the right */
-            align-items: center;
-            padding: 10px;
-            background-color: #f7f7f7;
-            border-bottom: 1px solid var(--border-color);
-        }
+        #chat-header { display: flex; justify-content: flex-end; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
         #chat-header-buttons { display: flex; gap: 8px; }
-        #clear-chat-btn, #minimize-chat-btn {
-             background: #6c757d; color: white; border: none;
-             padding: 4px 8px; font-size: 12px;
-             border-radius: 4px; cursor: pointer;
-        }
+        #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
-        
-        /* CHANGE: Make username blue again */
-        #chat-log p strong {
-            color: var(--primary-color);
-            font-weight: bold;
-        }
-        
+        #chat-log p strong { color: var(--primary-color); font-weight: bold; }
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
 
-        /* --- MOBILE OVERRIDES (Largely ignored for now) --- */
+        /* --- MOBILE OVERRIDES --- */
         @media (max-width: 900px) {
-            #chat-preview { display: block; }
+            #top-bar { padding: 0 10px; }
+            #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
+            #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
+
             .app-container { padding: 10px; }
-            .lists-container { justify-content: space-around; }
-            .list-column { flex: 0 0 48%; }
+            .lists-container { justify-content: space-between; }
+            
+            /* CHANGE: Make columns much narrower to create a large gap */
+            .list-column {
+                flex: 0 0 40%; /* Each column is 40% wide, leaving a 20% gap */
+                padding: 0;
+                box-shadow: none;
+                background-color: transparent;
+            }
+
             .rank-image { width: 100%; height: auto; }
+            .rank-item { padding: 5px 0; }
+            .rank-number { font-size: 1.5em; padding: 0 5px; }
+            .image-caption { font-size: 11px; }
+
+            /* CHANGE: Hide desktop chat by default on mobile */
             #chat-container {
-                display: none; /* Keep chat hidden on mobile by default */
+                display: none; 
                 width: 100%; top: auto; bottom: 0; left: 0;
                 max-width: 100%; border-radius: 8px 8px 0 0;
                 transform: none;
@@ -120,14 +128,8 @@
 
     <div class="app-container">
         <div class="lists-container">
-            <div class="list-column">
-                <h2 class="column-header">Ben</h2>
-                <ul id="rank-list-a" class="rank-list"></ul>
-            </div>
-            <div class="list-column">
-                <h2 class="column-header">Steve</h2>
-                <ul id="rank-list-b" class="rank-list"></ul>
-            </div>
+            <div class="list-column"> <h2 class="column-header">Ben</h2> <ul id="rank-list-a" class="rank-list"></ul> </div>
+            <div class="list-column"> <h2 class="column-header">Steve</h2> <ul id="rank-list-b" class="rank-list"></ul> </div>
         </div>
     </div>
     
@@ -156,30 +158,32 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
 
-            // --- Element Selectors ---
-            const uploadBtn = document.getElementById('upload-btn');
             const openChatBtn = document.getElementById('open-chat-btn');
             const chatContainer = document.getElementById('chat-container');
             const minimizeChatBtn = document.getElementById('minimize-chat-btn');
             const clearChatBtn = document.getElementById('clear-chat-btn');
             const chatLog = document.getElementById('chat-log');
 
-            // --- Event Listeners ---
             openChatBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'flex';
+                // CHANGE: Stop flashing when chat is opened
+                openChatBtn.classList.remove('new-message-flash');
             });
             minimizeChatBtn.addEventListener('click', () => {
                 chatContainer.style.display = 'none';
             });
             clearChatBtn.addEventListener('click', () => {
-                if (window.confirm('Are you sure you want to delete the entire chat history for everyone?')) {
+                if (window.confirm('Are you sure you want to delete the chat history?')) {
                     socket.emit('clearChat');
                 }
             });
 
-            // --- Core Functions ---
+            // CHANGE: Function to reliably scroll chat to bottom
             const scrollToChatBottom = () => {
-                chatLog.scrollTop = chatLog.scrollHeight;
+                // Use a tiny timeout to allow the DOM to update before scrolling
+                setTimeout(() => {
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }, 0);
             };
 
             const renderChatMessage = (msg) => {
@@ -189,7 +193,6 @@
                 scrollToChatBottom();
             };
             
-            // --- Socket.IO Handlers ---
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -198,18 +201,26 @@
 
             socket.on('chatMessage', (msg) => {
                 renderChatMessage(msg);
+                updateChatPreview();
+
+                // CHANGE: Logic for new message notification
+                const myUsername = sessionStorage.getItem('chatUsername');
+                if (chatContainer.style.display === 'none' && msg.user !== myUsername) {
+                    openChatBtn.classList.add('new-message-flash');
+                }
             });
 
             socket.on('chatCleared', () => {
                 chatLog.innerHTML = '';
             });
 
-            // The rest of your JS for ranking, uploads, etc.
-            const fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatInput = document.getElementById('chat-input'), chatSendBtn = document.getElementById('chat-send-btn');
+            // --- The rest of the JS is unchanged and included for completeness ---
+            const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatInput = document.getElementById('chat-input'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [], username = sessionStorage.getItem('chatUsername');
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
             const renderSingleList = (listElement, itemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
             const renderAllLists = () => { renderSingleList(rankListA, listA_Items); renderSingleList(rankListB, listB_Items); };
+            const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
             new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
