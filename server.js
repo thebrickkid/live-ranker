@@ -10,14 +10,13 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 // --- 1. SETUP AND INITIALIZATION ---
-
-// FINAL FIX: This method ensures the credentials from your Render Environment Variable are correctly parsed and used.
 const serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 initializeApp({
-  credential: cert(serviceAccount), // Use the parsed service account
+  credential: cert(serviceAccount),
   projectId: 'bb-ranker',
-  storageBucket: 'bb-ranker.appspot.com' 
+  // CHANGE: Corrected to your project's actual storage bucket URL format
+  storageBucket: 'bb-ranker.firebasestorage.app' 
 });
 
 const db = getFirestore();
