@@ -71,25 +71,26 @@ io.on('connection', (socket) => {
       try {
           const query = db.collection('chat').where('id', '==', Number(id));
           const snapshot = await query.get();
-          if (snapshot.empty) return;
+          if (snapshot.empty) {
+              console.error(`Admin delete failed: No message found with ID ${id}`);
+              return;
+          }
           await snapshot.docs[0].ref.delete();
           io.emit('messageDeleted', { id });
       } catch (error) { console.error("Delete message error:", error); }
   });
   
-  // CHANGE: New listener for real-time color changes
   socket.on('userColorChange', ({ user, color }) => {
-      // Broadcast to all OTHER clients that a user's color has changed
+      if (!user) return; // Don't process if user isn't set
       socket.broadcast.emit('userColorUpdated', { user, color });
       
-      // Update the color for all of that user's messages in the database
       db.collection('chat').where('user', '==', user).get().then(snapshot => {
           if (snapshot.empty) return;
           const batch = db.batch();
           snapshot.docs.forEach(doc => {
               batch.update(doc.ref, { color: color });
           });
-          batch.commit();
+          batch.commit().catch(err => console.error("Batch color update error:", err));
       });
   });
 

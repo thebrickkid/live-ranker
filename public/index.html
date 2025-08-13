@@ -8,14 +8,13 @@
     <style>
         :root {
             --primary-color: #007bff;
+            --primary-hover: #0056b3;
             --background-color: #f0f2f5;
             --container-bg: #ffffff;
             --border-color: #e0e0e0;
             --top-bar-height: 60px;
             --notification-green: #28a745;
         }
-
-        /* --- BASE STYLES (DESKTOP) --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--background-color);
@@ -28,32 +27,27 @@
             align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1000; box-sizing: border-box;
         }
+        #top-bar-center { flex-grow: 1; text-align: center; }
         #chat-preview { display: none; }
         .button-top-bar {
             background-color: var(--primary-color); color: white; border: none; padding: 8px 16px;
             font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
         }
-        @keyframes flash-green {
-            0%, 100% { background-color: var(--primary-color); }
-            50% { background-color: var(--notification-green); }
-        }
+        @keyframes flash-green { 0%, 100% { background-color: var(--primary-color); } 50% { background-color: var(--notification-green); } }
         .new-message-flash { animation: flash-green 1.5s infinite; }
-        
-        /* CHANGE: App container is now wider */
         .app-container { max-width: 1500px; margin: 0 auto; padding: 20px; }
         .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
         .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: #6c757d; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
         .rank-list { list-style-type: none; padding: 0; margin: 0; }
-        .rank-item { display: flex; align-items: center; padding: 10px 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); cursor: grab; }
+        .rank-item { display: flex; align-items: center; padding: 10px 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); cursor: grab; position: relative; border-radius: 5px; }
         .rank-item:last-child { border-bottom: none; }
+        .edit-mode-active .rank-item { cursor: pointer; outline: 2px dashed var(--primary-color); }
         #rank-list-b .rank-item { flex-direction: row-reverse; }
         .item-content { display: flex; flex-direction: column; align-items: center; }
         .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; }
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
-        
-        /* CHANGE: Chat is now wider */
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 750px; background-color: white; border: 1px solid var(--border-color);
@@ -64,8 +58,7 @@
         #chat-header-buttons { display: flex; gap: 8px; }
         #color-picker-container { display: flex; align-items: center; gap: 8px; }
         #color-picker { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 60px; height: 25px; background-color: transparent; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; }
-        #color-picker::-webkit-color-swatch { border-radius: 3px; border: none; }
-        #color-picker::-moz-color-swatch { border-radius: 3px; border: none; }
+        #color-picker::-webkit-color-swatch, #color-picker::-moz-color-swatch { border-radius: 3px; border: none; }
         #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
         #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
         #chat-log p { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 0 0 8px 0; }
@@ -75,10 +68,9 @@
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
-
-        /* --- MOBILE OVERRIDES --- */
         @media (max-width: 900px) {
             #top-bar { padding: 0 10px; }
+            #top-bar-center { display: none; } /* Hide desktop edit button on mobile */
             #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
             .app-container { padding: 10px; }
@@ -95,6 +87,9 @@
 <body>
     <div id="top-bar">
         <button id="upload-btn" class="button-top-bar">Upload</button>
+        <div id="top-bar-center">
+            <button id="edit-lists-btn" class="button-top-bar" style="background-color: #6c757d;">Edit Lists</button>
+        </div>
         <div id="chat-preview"></div>
         <button id="open-chat-btn" class="button-top-bar">Chat</button>
     </div>
@@ -121,7 +116,7 @@
             <button id="chat-send-btn">Send</button>
         </div>
     </div>
-    <div id="crop-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002;"> <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center;"> <h2>Crop Image to Square</h2> <div style="margin: 20px 0; max-width: 80vw; max-height: 70vh;"><img id="image-to-crop" style="display: block; max-width: 100%;"></div> <button id="crop-save-btn" class="button-primary">Crop Image</button> </div> </div>
+    <div id="crop-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002;"> <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center;"> <h2>Crop Image to Square</h2> <div class="crop-container" style="margin: 20px 0; max-width: 80vw; max-height: 70vh;"><img id="image-to-crop" style="display: block; max-width: 100%;"></div> <button id="crop-save-btn" class="button-primary">Crop Image</button> </div> </div>
     <input type="file" id="file-input" accept="image/*" style="display: none;">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
@@ -131,57 +126,24 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
-
-            const openChatBtn = document.getElementById('open-chat-btn');
-            const chatContainer = document.getElementById('chat-container');
-            const minimizeChatBtn = document.getElementById('minimize-chat-btn');
-            const clearChatBtn = document.getElementById('clear-chat-btn');
-            const chatLog = document.getElementById('chat-log');
-            const chatInput = document.getElementById('chat-input');
-            const colorPicker = document.getElementById('color-picker');
-
-            const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
+            const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), listsContainer = document.querySelector('.lists-container');
+            let isEditMode = false, editingItemId = null;
             
-            openChatBtn.addEventListener('click', () => {
-                chatContainer.style.display = 'flex';
-                stopChatNotification();
-                scrollToChatBottom();
-            });
+            const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
+            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; stopChatNotification(); scrollToChatBottom(); });
             minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; });
             chatInput.addEventListener('focus', stopChatNotification);
+            clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
+            const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
             
-            clearChatBtn.addEventListener('click', () => {
-                const password = prompt("Enter admin password to clear the entire chat:");
-                if (password === 'bricks') {
-                    if (window.confirm('ADMIN: Are you sure you want to delete the entire chat history?')) socket.emit('clearChat');
-                } else if (password !== null) alert("Incorrect password.");
-            });
-            
-            const scrollToChatBottom = () => {
-                setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); // Small delay for reliability
-            };
-
-            const updateUserMessageColors = (user, newColor) => {
-                document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => {
-                    el.style.color = newColor;
-                });
-            };
-
             const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
             colorPicker.value = savedColor;
-            colorPicker.addEventListener('input', (e) => {
-                const newColor = e.target.value;
-                const currentUser = sessionStorage.getItem('chatUsername');
-                localStorage.setItem('chatUsernameColor', newColor);
-                updateUserMessageColors(currentUser, newColor);
-                // CHANGE: Emit color change to other users
-                socket.emit('userColorChange', { user: currentUser, color: newColor });
-            });
+            const updateUserMessageColors = (user, newColor) => { document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => { el.style.color = newColor; }); };
+            colorPicker.addEventListener('input', (e) => { const newColor = e.target.value; const currentUser = sessionStorage.getItem('chatUsername'); localStorage.setItem('chatUsernameColor', newColor); updateUserMessageColors(currentUser, newColor); socket.emit('userColorChange', { user: currentUser, color: newColor }); });
 
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
-                p.dataset.messageId = msg.id;
-                p.dataset.author = msg.user;
+                if (msg.id) { p.dataset.messageId = msg.id; p.dataset.author = msg.user; }
                 const messageContent = document.createElement('span');
                 const strong = document.createElement('strong');
                 strong.textContent = `${msg.user}:`;
@@ -190,95 +152,66 @@
                 messageContent.appendChild(strong);
                 messageContent.append(` ${msg.text}`);
                 p.appendChild(messageContent);
-                const actions = document.createElement('div');
-                actions.className = 'message-actions';
-                actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`;
-                p.appendChild(actions);
+                if (msg.id) { const actions = document.createElement('div'); actions.className = 'message-actions'; actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`; p.appendChild(actions); }
                 chatLog.appendChild(p);
             };
             
             chatLog.addEventListener('click', (e) => {
                 const messageElement = e.target.closest('p');
-                if (!messageElement) return;
-
+                if (!messageElement || !messageElement.dataset.messageId) return;
                 const messageId = Number(messageElement.dataset.messageId);
                 const messageAuthor = messageElement.dataset.author;
                 const currentUser = sessionStorage.getItem('chatUsername');
                 const isOwnMessage = (messageAuthor === currentUser);
                 const adminPassword = 'bricks';
+                const performDelete = () => { if (confirm('Are you sure you want to delete this message?')) socket.emit('deleteMessage', { id: messageId }); };
+                const performEdit = () => { const currentText = messageElement.querySelector('span').innerText.split(': ')[1] || ''; const newText = prompt('Edit the message:', currentText); if (newText && newText.trim() !== '' && newText !== currentText) socket.emit('editMessage', { id: messageId, text: newText }); };
+                if (e.target.classList.contains('delete-btn')) { if (isOwnMessage) performDelete(); else { const password = prompt("Enter admin password to delete message:"); if (password === adminPassword) performDelete(); else if (password !== null) alert("Incorrect password."); } }
+                if (e.target.classList.contains('edit-btn')) { if (isOwnMessage) performEdit(); else { const password = prompt("Enter admin password to edit message:"); if (password === adminPassword) performEdit(); else if (password !== null) alert("Incorrect password."); } }
+            });
 
-                const performDelete = () => {
-                    if (confirm('Are you sure you want to delete this message?')) socket.emit('deleteMessage', { id: messageId });
-                };
+            // --- EDIT LISTS MODE ---
+            editListsBtn.addEventListener('click', () => {
+                isEditMode = !isEditMode;
+                document.body.classList.toggle('edit-mode-active');
+                editListsBtn.textContent = isEditMode ? "Done Editing" : "Edit Lists";
+                editListsBtn.style.backgroundColor = isEditMode ? '#28a745' : '#6c757d';
+                if (!isEditMode) socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); // Save on exit
+            });
+            listsContainer.addEventListener('click', (e) => {
+                if (!isEditMode) return;
+                const itemElement = e.target.closest('.rank-item');
+                if (!itemElement) return;
+                const itemId = Number(itemElement.dataset.id);
+                let item = listA_Items.find(i => i.id === itemId) || listB_Items.find(i => i.id === itemId);
+                if (!item) return;
                 
-                const performEdit = () => {
-                    const currentText = messageElement.querySelector('span').innerText.split(': ')[1] || '';
-                    const newText = prompt('Edit the message:', currentText);
-                    if (newText && newText.trim() !== '' && newText !== currentText) socket.emit('editMessage', { id: messageId, text: newText });
-                };
+                const action = prompt(`Editing "${item.text}".\nType 'text', 'link', or 'image' to edit:`);
+                if (action === null) return;
 
-                if (e.target.classList.contains('delete-btn')) {
-                    if (isOwnMessage) {
-                        performDelete();
-                    } else {
-                        const password = prompt("Enter admin password to delete this message:");
-                        if (password === adminPassword) {
-                            alert("Password correct! Sending delete request..."); // Debugging alert
-                            performDelete();
-                        } else if (password !== null) {
-                            alert("Incorrect password.");
-                        }
-                    }
+                if (action.toLowerCase() === 'text') {
+                    const newText = prompt("Enter new text:", item.text);
+                    if (newText !== null) item.text = newText;
+                } else if (action.toLowerCase() === 'link') {
+                    const currentUsername = item.link ? item.link.split('/').pop() : "";
+                    const newUsername = prompt("Enter new Instagram username:", currentUsername);
+                    if (newUsername !== null) item.link = newUsername ? `https://www.instagram.com/${newUsername.trim()}` : "";
+                } else if (action.toLowerCase() === 'image') {
+                    editingItemId = itemId;
+                    document.getElementById('file-input').click();
                 }
-                if (e.target.classList.contains('edit-btn')) {
-                    if (isOwnMessage) {
-                        performEdit();
-                    } else {
-                        const password = prompt("Enter admin password to edit this message:");
-                        if (password === adminPassword) {
-                            alert("Password correct! Sending edit request..."); // Debugging alert
-                            performEdit();
-                        } else if (password !== null) {
-                            alert("Incorrect password.");
-                        }
-                    }
-                }
+                renderAllLists();
             });
 
-            socket.on('chatHistory', (history) => {
-                chatLog.innerHTML = '';
-                history.forEach(renderChatMessage);
-                scrollToChatBottom();
-            });
-            socket.on('chatMessage', (msg) => {
-                renderChatMessage(msg);
-                scrollToChatBottom();
-                updateChatPreview();
-                const currentUser = sessionStorage.getItem('chatUsername');
-                if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash');
-            });
-            socket.on('messageDeleted', ({ id }) => {
-                const el = chatLog.querySelector(`[data-message-id='${id}']`);
-                if (el) el.remove();
-                updateChatPreview(); // CHANGE: Update preview after a delete
-            });
-            socket.on('messageEdited', ({ id, text, user, color }) => {
-                const p = chatLog.querySelector(`[data-message-id='${id}']`);
-                if (p) {
-                    const strong = p.querySelector('strong');
-                    strong.style.color = color || '#007bff';
-                    p.querySelector('span').innerHTML = '';
-                    p.querySelector('span').appendChild(strong);
-                    p.querySelector('span').append(` ${text}`);
-                }
-                updateChatPreview();
-            });
-            // CHANGE: Listen for color updates from other users
-            socket.on('userColorUpdated', ({ user, color }) => {
-                updateUserMessageColors(user, color);
-            });
+            // --- SOCKET.IO LISTENERS ---
+            socket.on('chatHistory', (history) => { chatLog.innerHTML = ''; history.forEach(renderChatMessage); scrollToChatBottom(); });
+            socket.on('chatMessage', (msg) => { renderChatMessage(msg); scrollToChatBottom(); updateChatPreview(); const currentUser = sessionStorage.getItem('chatUsername'); if ((window.getComputedStyle(chatContainer).display === 'none') && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash'); });
+            socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
+            socket.on('messageEdited', ({ id, text, user, color }) => { const p = chatLog.querySelector(`[data-message-id='${id}']`); if (p) { const strong = p.querySelector('strong'); strong.style.color = color || '#007bff'; p.querySelector('span').innerHTML = ''; p.querySelector('span').appendChild(strong); p.querySelector('span').append(` ${text}`); } updateChatPreview(); });
+            socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
+            // --- UNCHANGED JS ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
             const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
@@ -289,7 +222,7 @@
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
-            cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
+            cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); if (editingItemId) { let item = listA_Items.find(i => i.id === editingItemId) || listB_Items.find(i => i.id === editingItemId); if (item) item.imageData = imageData; editingItemId = null; renderAllLists(); return; } const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
             const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
