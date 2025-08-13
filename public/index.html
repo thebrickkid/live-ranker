@@ -33,19 +33,20 @@
         .button-primary { background-color: var(--primary-color); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; }
         .button-primary:hover { background-color: var(--primary-hover); }
 
-        .lists-container { display: flex; justify-content: center; gap: 40px; }
-        .list-column { background-color: var(--container-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 1; max-width: 400px; min-width: 300px; }
+        /* DESKTOP: Increased gap between columns to prevent chat overlap */
+        .lists-container { display: flex; justify-content: center; gap: 80px; }
+        .list-column { background-color: var(--container-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 0 1 420px; }
         .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: var(--column-header-color); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
         .rank-list { list-style-type: none; padding: 0; margin: 0; min-height: 100px; }
 
         .rank-item { display: flex; align-items: center; padding: 10px; margin-bottom: 15px; background-color: #fdfdfd; border: 1px solid var(--border-color); border-radius: 5px; cursor: grab; position: relative; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
         .rank-item:active { cursor: grabbing; }
         .rank-number { font-size: 2.2em; font-weight: bold; color: #ccc; width: 60px; text-align: center; flex-shrink: 0; }
-        
-        /* FIX for box extending too far */
         .item-content { display: flex; flex-direction: column; align-items: center; flex-grow: 1; min-width: 0; }
         
-        .rank-image { width: 150px; height: 150px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
+        /* DESKTOP: Set smaller image size as requested */
+        .rank-image { width: 120px; height: 120px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
+        
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6; font-size: 14px; font-style: italic; color: #495057; max-width: 100%; text-align: center; word-break: break-all; }
         .image-caption a { color: var(--primary-color); text-decoration: none; }
         .image-caption a:hover { text-decoration: underline; }
@@ -89,15 +90,15 @@
         /* --- MOBILE OVERRIDES (Applied only on screens 900px or less) --- */
         @media (max-width: 900px) {
             body {
-                padding: var(--top-bar-height) 5px 20px 5px; /* Add space for top bar, reduce side padding */
+                padding: var(--top-bar-height) 5px 20px 5px;
             }
 
             .controls {
-                display: none; /* Hide original desktop upload button */
+                display: none;
             }
 
             #top-bar {
-                display: flex; /* Show mobile top bar */
+                display: flex;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -126,7 +127,6 @@
             }
 
             #chat-container {
-                /* Make chat a popup from the bottom on mobile */
                 top: auto;
                 bottom: 0;
                 left: 0;
@@ -134,36 +134,36 @@
                 max-width: 100%;
                 border-radius: 8px 8px 0 0;
                 transform: none;
-                display: none; /* Keep it hidden until opened */
+                display: none;
             }
             
-            /* Side-by-side columns on mobile */
             .lists-container {
-                gap: 10px;
-                align-items: flex-start;
+                gap: 0; /* Remove gap to control spacing with padding */
+                justify-content: space-around; /* This creates the scroll area */
             }
 
-            /* Shrink columns and their contents */
+            /* MOBILE: Further reduce padding and set a max width to create scroll gap */
             .list-column {
-                padding: 10px;
-                flex: 1 1 48%; /* Allow columns to take up half the space */
-                min-width: 0; /* Important for flex-shrink to work */
+                padding: 5px;
+                flex: 0 1 47%; /* Each column takes up 47%, leaving a 6% gap */
+                min-width: 0;
             }
             .rank-item {
                 padding: 5px;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
             .rank-number {
-                font-size: 1.5em; /* Smaller number */
-                width: 30px;
+                font-size: 1.5em;
+                width: 25px; /* Tighter number column */
             }
+            /* MOBILE: Smaller image */
             .rank-image {
-                width: 100px; /* Smaller image */
-                height: 100px;
+                width: 90px; 
+                height: 90px;
             }
             .image-caption {
-                font-size: 11px; /* Smaller caption */
-                padding: 3px 5px;
+                font-size: 10px;
+                padding: 2px 4px;
             }
         }
 
@@ -223,8 +223,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     
     <script>
-        // The JavaScript does not need any changes from the previous version.
-        // It correctly handles the new elements and logic.
+        // No changes to the JavaScript were needed.
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
 
