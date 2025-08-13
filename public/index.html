@@ -26,28 +26,29 @@
             padding: 20px;
         }
 
-        #top-bar { display: none; } /* Hide mobile top bar on desktop by default */
+        #top-bar { display: none; }
 
         .app-container { max-width: 1800px; margin: 0 auto; }
         .controls { text-align: center; margin-bottom: 25px; }
         .button-primary { background-color: var(--primary-color); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; }
         .button-primary:hover { background-color: var(--primary-hover); }
 
-        /* DESKTOP: Increased gap between columns to prevent chat overlap */
-        .lists-container { display: flex; justify-content: center; gap: 80px; }
-        .list-column { background-color: var(--container-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 0 1 420px; }
+        /* DESKTOP: Increased gap and made columns narrower to fit chat */
+        .lists-container { display: flex; justify-content: center; gap: 100px; }
+        .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 0 1 auto; }
+        
         .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: var(--column-header-color); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
         .rank-list { list-style-type: none; padding: 0; margin: 0; min-height: 100px; }
 
-        .rank-item { display: flex; align-items: center; padding: 10px; margin-bottom: 15px; background-color: #fdfdfd; border: 1px solid var(--border-color); border-radius: 5px; cursor: grab; position: relative; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
+        /* DESKTOP: Tighter item spacing, as requested */
+        .rank-item { display: flex; align-items: center; padding: 5px; margin-bottom: 10px; background-color: #fdfdfd; border: 1px solid var(--border-color); border-radius: 5px; cursor: grab; position: relative; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
         .rank-item:active { cursor: grabbing; }
-        .rank-number { font-size: 2.2em; font-weight: bold; color: #ccc; width: 60px; text-align: center; flex-shrink: 0; }
+        .rank-number { font-size: 1.8em; font-weight: bold; color: #ccc; padding: 0 10px; flex-shrink: 0; }
         .item-content { display: flex; flex-direction: column; align-items: center; flex-grow: 1; min-width: 0; }
         
-        /* DESKTOP: Set smaller image size as requested */
-        .rank-image { width: 120px; height: 120px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
+        .rank-image { width: 100px; height: 100px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; }
         
-        .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6; font-size: 14px; font-style: italic; color: #495057; max-width: 100%; text-align: center; word-break: break-all; }
+        .image-caption { margin: 5px 0 0 0; padding: 4px 8px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6; font-size: 12px; font-style: italic; color: #495057; max-width: 100%; text-align: center; word-break: break-all; }
         .image-caption a { color: var(--primary-color); text-decoration: none; }
         .image-caption a:hover { text-decoration: underline; }
         .delete-btn { position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background-color: #dc3545; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 30px; text-align: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease; transform: scale(0.8); }
@@ -137,16 +138,16 @@
                 display: none;
             }
             
+            /* MOBILE: Use justify-content to create a scrollable gap */
             .lists-container {
-                gap: 0; /* Remove gap to control spacing with padding */
-                justify-content: space-around; /* This creates the scroll area */
+                gap: 0;
+                justify-content: space-around;
             }
 
-            /* MOBILE: Further reduce padding and set a max width to create scroll gap */
+            /* MOBILE: Narrower columns and tighter spacing */
             .list-column {
                 padding: 5px;
-                flex: 0 1 47%; /* Each column takes up 47%, leaving a 6% gap */
-                min-width: 0;
+                flex: 0 1 45%; /* Each column takes up 45%, leaving a 10% gap */
             }
             .rank-item {
                 padding: 5px;
@@ -154,12 +155,11 @@
             }
             .rank-number {
                 font-size: 1.5em;
-                width: 25px; /* Tighter number column */
+                padding: 0 5px; /* Reduced padding from 10px */
             }
-            /* MOBILE: Smaller image */
             .rank-image {
-                width: 90px; 
-                height: 90px;
+                width: 80px; 
+                height: 80px;
             }
             .image-caption {
                 font-size: 10px;
