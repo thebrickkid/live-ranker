@@ -192,7 +192,7 @@
                 isEditMode = !isEditMode;
                 document.body.classList.toggle('edit-mode-active');
                 editListsBtn.textContent = isEditMode ? "Done" : "Edit";
-                editListsBtn.style.backgroundColor = isEditMode ? '#28a745' : '#6c757d';
+                editListsBtn.style.backgroundColor = isEditMode ? '#28a_545' : '#6c757d';
                 if (!isEditMode) socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
             });
             listsContainer.addEventListener('click', (e) => {
@@ -213,8 +213,27 @@
                 renderAllLists();
             });
             
-            socket.on('initialData', ({ lists, headers }) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; } });
-            socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
+            // --- SOCKET.IO LISTENERS ---
+            // CHANGE: Replaced old 'rankingLists' listener with the new 'initialData' one
+            socket.on('initialData', ({ lists, headers }) => {
+                listA_Items = lists.listA;
+                listB_Items = lists.listB;
+                renderAllLists();
+                if (headers) {
+                    headerA.textContent = headers.headerA || 'Ben';
+                    headerB.textContent = headers.headerB || 'Steve';
+                }
+            });
+            socket.on('rankingLists', (lists) => { // This listener updates lists after a drag/drop or add
+                listA_Items = lists.listA;
+                listB_Items = lists.listB;
+                renderAllLists();
+            });
+
+            socket.on('headersUpdated', (headers) => {
+                headerA.textContent = headers.headerA;
+                headerB.textContent = headers.headerB;
+            });
             socket.on('chatHistory', (history) => { 
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -231,32 +250,10 @@
             socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
             socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
 
+            // --- UNCHANGED JS ---
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
-            
-            // CHANGE: createRankItemElement now gets image URL instead of data
-            const createRankItemElement = (item) => {
-                const listItem = document.createElement('li');
-                listItem.className = 'rank-item';
-                listItem.dataset.id = item.id;
-                const numberDiv = document.createElement('div');
-                numberDiv.className = 'rank-number';
-                const itemContentDiv = document.createElement('div');
-                itemContentDiv.className = 'item-content';
-                const image = document.createElement('img');
-                image.className = 'rank-image';
-                image.src = item.imageUrl; // Use imageUrl now
-                itemContentDiv.appendChild(image);
-                if (item.text) {
-                    const caption = document.createElement('p');
-                    caption.className = 'image-caption';
-                    if (item.link) { caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; }
-                    itemContentDiv.appendChild(caption);
-                }
-                listItem.appendChild(numberDiv);
-                listItem.appendChild(itemContentDiv);
-                return listItem;
-            };
+            const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageUrl; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
             const renderSingleList = (listElement, itemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
             const renderAllLists = () => { renderSingleList(rankListA, listA_Items); renderSingleList(rankListB, listB_Items); };
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
@@ -264,61 +261,11 @@
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1, viewMode: 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
-            
-            // CHANGE: This now uploads to server instead of creating a data URL
-            cropAndSaveBtn.addEventListener('click', () => {
-                if (!cropper) return;
-                cropAndSaveBtn.disabled = true;
-                cropAndSaveBtn.textContent = "Uploading...";
-
-                cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => {
-                    const formData = new FormData();
-                    formData.append('image', blob, 'upload.jpg');
-                    if (editingItemId) {
-                        formData.append('id', editingItemId);
-                        const itemToEdit = listA_Items.find(i => i.id === editingItemId);
-                        formData.append('oldImageUrl', itemToEdit.imageUrl);
-                    }
-
-                    fetch('/upload-image', { method: 'POST', body: formData })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) { throw new Error(data.error); }
-                            
-                            if (editingItemId) {
-                                let itemA = listA_Items.find(i => i.id === editingItemId);
-                                let itemB = listB_Items.find(i => i.id === editingItemId);
-                                if (itemA) itemA.imageUrl = data.imageUrl;
-                                if (itemB) itemB.imageUrl = data.imageUrl;
-                                editingItemId = null;
-                                renderAllLists();
-                            } else {
-                                const description = prompt("Enter name/description:", "");
-                                const instaUser = prompt("Enter Instagram username (optional):", "");
-                                let link = instaUser ? `https://www.instagram.com/${instaUser.trim()}` : "";
-                                const newItem = { id: Date.now(), imageUrl: data.imageUrl, text: description || "", link: link };
-                                listA_Items.push(JSON.parse(JSON.stringify(newItem)));
-                                listB_Items.push(JSON.parse(JSON.stringify(newItem)));
-                                socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
-                            }
-                            modal.style.display = 'none';
-                        })
-                        .catch(error => {
-                            console.error('Upload failed:', error);
-                            alert('Upload failed: ' + error.message);
-                        })
-                        .finally(() => {
-                            cropAndSaveBtn.disabled = false;
-                            cropAndSaveBtn.textContent = "Crop Image";
-                            cropper.destroy();
-                        });
-                }, 'image/jpeg');
-            });
+            cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; cropAndSaveBtn.disabled = true; cropAndSaveBtn.textContent = "Uploading..."; cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => { const formData = new FormData(); formData.append('image', blob, 'upload.jpg'); if (editingItemId) { formData.append('id', editingItemId); const itemToEdit = listA_Items.find(i => i.id === editingItemId); formData.append('oldImageUrl', itemToEdit.imageUrl); } fetch('/upload-image', { method: 'POST', body: formData }).then(response => response.json()).then(data => { if (data.error) { throw new Error(data.error); } if (editingItemId) { let itemA = listA_Items.find(i => i.id === editingItemId); let itemB = listB_Items.find(i => i.id === editingItemId); if (itemA) itemA.imageUrl = data.imageUrl; if (itemB) itemB.imageUrl = data.imageUrl; editingItemId = null; renderAllLists(); } else { const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = instaUser ? `https://www.instagram.com/${instaUser.trim()}` : ""; const newItem = { id: Date.now(), imageUrl: data.imageUrl, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } modal.style.display = 'none'; }).catch(error => { console.error('Upload failed:', error); alert('Upload failed: ' + error.message); }).finally(() => { cropAndSaveBtn.disabled = false; cropAndSaveBtn.textContent = "Crop Image"; if(cropper) cropper.destroy(); }); }, 'image/jpeg'); });
             const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
             socket.on('connect', () => socket.emit('requestInitialData'));
-            socket.on('rankingLists', (lists) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); });
         });
     </script>
 </body>
