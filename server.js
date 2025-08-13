@@ -23,6 +23,7 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+  // COMBINED initial data request
   socket.on('requestInitialData', async () => {
     try {
       const chatSnapshot = await db.collection('chat').orderBy('timestamp').get();
@@ -33,7 +34,13 @@ io.on('connection', (socket) => {
       const listBSnapshot = await db.collection('rankingLists').doc('listB').get();
       const listA = listASnapshot.exists ? listASnapshot.data().items : [];
       const listB = listBSnapshot.exists ? listBSnapshot.data().items : [];
-      socket.emit('rankingLists', { listA, listB });
+
+      const headersDoc = await db.collection('appState').doc('headers').get();
+      const headers = headersDoc.exists ? headersDoc.data() : { headerA: 'Ben', headerB: 'Steve' };
+      
+      // Send lists and headers together
+      socket.emit('initialData', { lists: { listA, listB }, headers });
+
     } catch (error) { console.error("Initial data fetch error:", error); }
   });
 
@@ -43,6 +50,14 @@ io.on('connection', (socket) => {
       await db.collection('rankingLists').doc('listB').set({ items: lists.listB });
       io.emit('rankingLists', lists);
     } catch (error) { console.error("Update lists error:", error); }
+  });
+
+  // NEW: Handle header updates
+  socket.on('updateHeaders', async (headers) => {
+      try {
+          await db.collection('appState').doc('headers').set(headers);
+          io.emit('headersUpdated', headers);
+      } catch (error) { console.error("Update headers error:", error); }
   });
 
   socket.on('chatMessage', async (msg) => {
@@ -81,7 +96,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('userColorChange', ({ user, color }) => {
-      if (!user) return; // Don't process if user isn't set
+      if (!user) return;
       socket.broadcast.emit('userColorUpdated', { user, color });
       
       db.collection('chat').where('user', '==', user).get().then(snapshot => {
