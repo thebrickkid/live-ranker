@@ -50,7 +50,6 @@
         .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; }
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
-        /* RESTORED: Style for the rank difference indicator */
         .rank-difference {
             font-size: 14px;
             font-weight: bold;
@@ -136,12 +135,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
             const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
-            let isEditMode = false, editingItemId = null, isChatVisible = true;
+            let isEditMode = false, editingItemId = null;
             
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             const updateLastReadMessage = () => { const lastMessage = chatLog.querySelector('p:last-child'); if (lastMessage && lastMessage.dataset.messageId) { localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId); } };
-            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; isChatVisible = true; stopChatNotification(); scrollToChatBottom(); updateLastReadMessage(); });
-            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; isChatVisible = false; });
+            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; scrollToChatBottom(); });
+            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; });
             chatInput.addEventListener('focus', () => { stopChatNotification(); updateLastReadMessage(); });
             clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
             const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
@@ -228,12 +227,24 @@
                 history.forEach(renderChatMessage);
                 scrollToChatBottom();
                 updateChatPreview();
-                if (window.innerWidth >= 901) { isChatVisible = true; chatContainer.style.display = 'flex'; } else { isChatVisible = false; chatContainer.style.display = 'none'; }
+                if (window.innerWidth >= 901) { chatContainer.style.display = 'flex'; } else { chatContainer.style.display = 'none'; }
                 const lastReadId = Number(localStorage.getItem('lastReadMessageId')) || 0;
                 const lastMessage = history.length > 0 ? history[history.length - 1] : null;
                 if (lastMessage && lastMessage.id > lastReadId) { openChatBtn.classList.add('new-message-flash'); }
             });
-            socket.on('chatMessage', (msg) => { renderChatMessage(msg); scrollToChatBottom(); updateChatPreview(); const currentUser = sessionStorage.getItem('chatUsername'); if (!isChatVisible && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash'); });
+            
+            // CHANGE: Final update to the chat message listener
+            socket.on('chatMessage', (msg) => {
+                renderChatMessage(msg);
+                scrollToChatBottom();
+                updateChatPreview();
+                const currentUser = sessionStorage.getItem('chatUsername');
+                // Always flash for a new message from another user
+                if (msg.user !== currentUser) {
+                    openChatBtn.classList.add('new-message-flash');
+                }
+            });
+            
             socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
             socket.on('messageEdited', ({ id, text, user, color }) => { const p = chatLog.querySelector(`[data-message-id='${id}']`); if (p) { const strong = p.querySelector('strong'); strong.style.color = color || '#007bff'; p.querySelector('span').innerHTML = ''; p.querySelector('span').appendChild(strong); p.querySelector('span').append(` ${text}`); } updateChatPreview(); });
             socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
@@ -241,66 +252,9 @@
 
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
-            
-            // --- RANKING LIST RENDERING ---
-            // RESTORED: createRankItemElement now calculates and adds the difference indicator
-            const createRankItemElement = (item, ownList, otherList) => {
-                const listItem = document.createElement('li');
-                listItem.className = 'rank-item';
-                listItem.dataset.id = item.id;
-                const numberDiv = document.createElement('div');
-                numberDiv.className = 'rank-number';
-                const itemContentDiv = document.createElement('div');
-                itemContentDiv.className = 'item-content';
-                const image = document.createElement('img');
-                image.className = 'rank-image';
-                image.src = item.imageUrl;
-                itemContentDiv.appendChild(image);
-                if (item.text) {
-                    const caption = document.createElement('p');
-                    caption.className = 'image-caption';
-                    if (item.link) { caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; }
-                    itemContentDiv.appendChild(caption);
-                }
-
-                const ownIndex = ownList.findIndex(i => i.id === item.id);
-                const otherIndex = otherList.findIndex(i => i.id === item.id);
-                if (ownIndex !== -1 && otherIndex !== -1) {
-                    const diff = ownIndex - otherIndex;
-                    const indicator = document.createElement('p');
-                    indicator.className = 'rank-difference';
-                    if (diff > 0) {
-                        indicator.textContent = `${diff} places lower`;
-                        indicator.style.color = 'var(--rank-lower-red)';
-                        itemContentDiv.appendChild(indicator);
-                    } else if (diff < 0) {
-                        indicator.textContent = `${Math.abs(diff)} places higher`;
-                        indicator.style.color = 'var(--notification-green)';
-                        itemContentDiv.appendChild(indicator);
-                    } else {
-                        indicator.textContent = `same position`;
-                        indicator.style.color = 'var(--rank-same-blue)';
-                        itemContentDiv.appendChild(indicator);
-                    }
-                }
-
-                listItem.appendChild(numberDiv);
-                listItem.appendChild(itemContentDiv);
-                return listItem;
-            };
-
-            const renderSingleList = (listElement, itemsArray, otherItemsArray) => {
-                listElement.innerHTML = '';
-                itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item, itemsArray, otherItemsArray)); });
-                const items = listElement.querySelectorAll('.rank-item');
-                items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; });
-            };
-
-            const renderAllLists = () => {
-                renderSingleList(rankListA, listA_Items, listB_Items);
-                renderSingleList(rankListB, listB_Items, listA_Items);
-            };
-            
+            const createRankItemElement = (item, ownList, otherList) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageUrl; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } const ownIndex = ownList.findIndex(i => i.id === item.id); const otherIndex = otherList.findIndex(i => i.id === item.id); if (ownIndex !== -1 && otherIndex !== -1) { const diff = ownIndex - otherIndex; const indicator = document.createElement('p'); indicator.className = 'rank-difference'; if (diff > 0) { indicator.textContent = `${diff} places lower`; indicator.style.color = 'var(--rank-lower-red)'; itemContentDiv.appendChild(indicator); } else if (diff < 0) { indicator.textContent = `${Math.abs(diff)} places higher`; indicator.style.color = 'var(--notification-green)'; itemContentDiv.appendChild(indicator); } else { indicator.textContent = `same position`; indicator.style.color = 'var(--rank-same-blue)'; itemContentDiv.appendChild(indicator); } } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
+            const renderSingleList = (listElement, itemsArray, otherItemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item, itemsArray, otherItemsArray)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
+            const renderAllLists = () => { renderSingleList(rankListA, listA_Items, listB_Items); renderSingleList(rankListB, listB_Items, listA_Items); };
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
             new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); renderAllLists(); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); renderAllLists(); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
