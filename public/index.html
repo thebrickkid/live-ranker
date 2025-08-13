@@ -74,9 +74,11 @@
             #top-bar-center { display: none; }
             #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
-            .app-container { padding: 10px; }
+            /* CHANGE: Reduce outer padding */
+            .app-container { padding: 10px 2px; }
             .lists-container { justify-content: space-between; }
-            .list-column { flex: 0 0 32%; padding: 0; box-shadow: none; background-color: transparent; }
+            /* CHANGE: Increase column width by 10% */
+            .list-column { flex: 0 0 35%; padding: 0; box-shadow: none; background-color: transparent; }
             .rank-image { width: 100%; height: auto; }
             .rank-item { padding: 5px 0; }
             .rank-number { font-size: 1.5em; padding: 0 5px; }
@@ -128,20 +130,21 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
             const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
-            let isEditMode = false, editingItemId = null;
+            let isEditMode = false, editingItemId = null, isChatVisible = true;
             
-            // --- CHAT VISIBILITY & NOTIFICATIONS ---
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             
-            openChatBtn.addEventListener('click', () => {
-                chatContainer.style.display = 'flex';
-                scrollToChatBottom();
-            });
-            minimizeChatBtn.addEventListener('click', () => {
-                chatContainer.style.display = 'none';
-            });
-            // CHANGE: Clicking in the input box is now the only way to stop the flash
-            chatInput.addEventListener('focus', stopChatNotification);
+            // CHANGE: New function to update the last read message timestamp
+            const updateLastReadMessage = () => {
+                const lastMessage = chatLog.querySelector('p:last-child');
+                if (lastMessage && lastMessage.dataset.messageId) {
+                    localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId);
+                }
+            };
+            
+            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; isChatVisible = true; stopChatNotification(); scrollToChatBottom(); updateLastReadMessage(); });
+            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; isChatVisible = false; });
+            chatInput.addEventListener('focus', () => { stopChatNotification(); updateLastReadMessage(); });
             
             clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
             const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
@@ -223,18 +226,21 @@
 
             socket.on('initialData', ({ lists, headers }) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; } });
             socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
-            socket.on('chatHistory', (history) => { chatLog.innerHTML = ''; history.forEach(renderChatMessage); scrollToChatBottom(); if (window.innerWidth >= 901) { chatContainer.style.display = 'flex'; } else { chatContainer.style.display = 'none'; } });
-            // CHANGE: Updated chat message listener
-            socket.on('chatMessage', (msg) => {
-                renderChatMessage(msg);
+            socket.on('chatHistory', (history) => { 
+                chatLog.innerHTML = '';
+                history.forEach(renderChatMessage);
                 scrollToChatBottom();
                 updateChatPreview();
-                const currentUser = sessionStorage.getItem('chatUsername');
-                // Flash for any new message from another user, regardless of chat visibility
-                if (msg.user !== currentUser) {
+                if (window.innerWidth >= 901) { isChatVisible = true; chatContainer.style.display = 'flex'; } else { isChatVisible = false; chatContainer.style.display = 'none'; }
+                
+                // CHANGE: Check for unread messages on load
+                const lastReadId = Number(localStorage.getItem('lastReadMessageId')) || 0;
+                const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+                if (lastMessage && lastMessage.id > lastReadId) {
                     openChatBtn.classList.add('new-message-flash');
                 }
             });
+            socket.on('chatMessage', (msg) => { renderChatMessage(msg); scrollToChatBottom(); updateChatPreview(); const currentUser = sessionStorage.getItem('chatUsername'); if (!isChatVisible && msg.user !== currentUser) openChatBtn.classList.add('new-message-flash'); });
             socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
             socket.on('messageEdited', ({ id, text, user, color }) => { const p = chatLog.querySelector(`[data-message-id='${id}']`); if (p) { const strong = p.querySelector('strong'); strong.style.color = color || '#007bff'; p.querySelector('span').innerHTML = ''; p.querySelector('span').appendChild(strong); p.querySelector('span').append(` ${text}`); } updateChatPreview(); });
             socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
