@@ -14,6 +14,7 @@
             --border-color: #e0e0e0;
             --top-bar-height: 60px;
             --notification-green: #28a745;
+            --rank-lower-red: #dc3545;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -48,6 +49,14 @@
         .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; }
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
+        
+        /* NEW: Style for the rank difference indicator */
+        .rank-difference {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 4px 0 0 0;
+        }
+
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 750px; background-color: white; border: 1px solid var(--border-color);
@@ -68,7 +77,9 @@
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
+        
         @media (min-width: 901px) { .column-header { cursor: pointer; } .column-header:hover { background-color: #f0f2f5; } }
+        
         @media (max-width: 900px) {
             #top-bar { padding: 0 10px; }
             #top-bar-center { display: none; }
@@ -80,7 +91,7 @@
             .rank-image { width: 100%; height: auto; }
             .rank-item { padding: 5px 0; }
             .rank-number { font-size: 1.5em; padding: 0 5px; }
-            .image-caption { font-size: 11px; }
+            .image-caption, .rank-difference { font-size: 11px; }
             #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
         }
     </style>
@@ -212,7 +223,8 @@
                 } else if (actionLower === 'delete') { if (confirm(`Are you sure you want to delete "${itemA.text}"?`)) { listA_Items = listA_Items.filter(i => i.id !== itemId); listB_Items = listB_Items.filter(i => i.id !== itemId); } }
                 renderAllLists();
             });
-
+            
+            // --- SOCKET.IO LISTENERS ---
             socket.on('initialData', ({ lists, headers }) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; } });
             socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
             socket.on('chatHistory', (history) => { 
@@ -233,33 +245,80 @@
 
             const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
             let cropper = null, listA_Items = [], listB_Items = [];
-            const createRankItemElement = (item) => { const listItem = document.createElement('li'); listItem.className = 'rank-item'; listItem.dataset.id = item.id; const numberDiv = document.createElement('div'); numberDiv.className = 'rank-number'; const itemContentDiv = document.createElement('div'); itemContentDiv.className = 'item-content'; const image = document.createElement('img'); image.className = 'rank-image'; image.src = item.imageData; itemContentDiv.appendChild(image); if (item.text) { const caption = document.createElement('p'); caption.className = 'image-caption'; if (item.link) { caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`; } else { caption.textContent = item.text; } itemContentDiv.appendChild(caption); } listItem.appendChild(numberDiv); listItem.appendChild(itemContentDiv); return listItem; };
-            const renderSingleList = (listElement, itemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
-            const renderAllLists = () => { renderSingleList(rankListA, listA_Items); renderSingleList(rankListB, listB_Items); };
+            
+            // --- RANKING LIST RENDERING ---
+            // CHANGE: createRankItemElement now calculates and adds the difference indicator
+            const createRankItemElement = (item, ownList, otherList) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'rank-item';
+                listItem.dataset.id = item.id;
+                
+                const numberDiv = document.createElement('div');
+                numberDiv.className = 'rank-number';
+                
+                const itemContentDiv = document.createElement('div');
+                itemContentDiv.className = 'item-content';
+                
+                const image = document.createElement('img');
+                image.className = 'rank-image';
+                image.src = item.imageData;
+                itemContentDiv.appendChild(image);
+                
+                if (item.text) {
+                    const caption = document.createElement('p');
+                    caption.className = 'image-caption';
+                    if (item.link) {
+                        caption.innerHTML = `<a href="${item.link}" rel="noopener noreferrer">${item.text}</a>`;
+                    } else {
+                        caption.textContent = item.text;
+                    }
+                    itemContentDiv.appendChild(caption);
+                }
+
+                // NEW: Rank Difference Logic
+                const ownIndex = ownList.findIndex(i => i.id === item.id);
+                const otherIndex = otherList.findIndex(i => i.id === item.id);
+
+                if (ownIndex !== -1 && otherIndex !== -1 && ownIndex !== otherIndex) {
+                    const diff = ownIndex - otherIndex;
+                    const indicator = document.createElement('p');
+                    indicator.className = 'rank-difference';
+                    if (diff > 0) { // My rank is worse (e.g., #5 vs #1)
+                        indicator.textContent = `${diff} places lower`;
+                        indicator.style.color = 'var(--rank-lower-red)';
+                    } else { // My rank is better (e.g., #1 vs #5)
+                        indicator.textContent = `${Math.abs(diff)} places higher`;
+                        indicator.style.color = 'var(--notification-green)';
+                    }
+                    itemContentDiv.appendChild(indicator);
+                }
+
+                listItem.appendChild(numberDiv);
+                listItem.appendChild(itemContentDiv);
+                return listItem;
+            };
+
+            const renderSingleList = (listElement, itemsArray, otherItemsArray) => {
+                listElement.innerHTML = '';
+                itemsArray.forEach(item => {
+                    listElement.appendChild(createRankItemElement(item, itemsArray, otherItemsArray));
+                });
+                const items = listElement.querySelectorAll('.rank-item');
+                items.forEach((item, index) => {
+                    item.querySelector('.rank-number').textContent = index + 1;
+                });
+            };
+
+            const renderAllLists = () => {
+                renderSingleList(rankListA, listA_Items, listB_Items);
+                renderSingleList(rankListB, listB_Items, listA_Items);
+            };
+            
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
             new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
             uploadBtn.addEventListener('click', () => fileInput.click());
-            
-            // CHANGE: Final fix for cropper viewMode
-            fileInput.addEventListener('change', (event) => {
-                const files = event.target.files;
-                if (files && files.length > 0) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        imageToCrop.src = e.target.result;
-                        modal.style.display = 'flex';
-                        if (cropper) cropper.destroy();
-                        cropper = new Cropper(imageToCrop, {
-                            aspectRatio: 1 / 1,
-                            viewMode: 1 // This prevents the crop box from exceeding the image bounds
-                        });
-                    };
-                    reader.readAsDataURL(files[0]);
-                }
-                fileInput.value = '';
-            });
-
+            fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1, viewMode: 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
             cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 }); const imageData = canvas.toDataURL('image/jpeg'); modal.style.display = 'none'; cropper.destroy(); if (editingItemId) { let itemA = listA_Items.find(i => i.id === editingItemId); let itemB = listB_Items.find(i => i.id === editingItemId); if (itemA) itemA.imageData = imageData; if (itemB) itemB.imageData = imageData; editingItemId = null; renderAllLists(); return; } const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = ""; if (instaUser) { link = `https://www.instagram.com/${instaUser.trim()}`; } const newItem = { id: Date.now(), imageData: imageData, text: description || "", link: link }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); });
             const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
             chatSendBtn.addEventListener('click', handleSendMessage);
