@@ -13,7 +13,8 @@ const { v4: uuidv4 } = require('uuid');
 const serviceAccount = require('./serviceAccountKey.json');
 initializeApp({
   credential: cert(serviceAccount),
-  // CHANGE: Your Project ID has been added here
+  // CHANGE: Explicitly adding the projectId to resolve the bucket error
+  projectId: 'rank-9c97d',
   storageBucket: 'rank-9c97d.appspot.com' 
 });
 
