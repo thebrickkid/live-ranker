@@ -57,6 +57,7 @@
             padding: 0 10px;
             cursor: pointer;
             user-select: none;
+            touch-action: manipulation;
         }
         .rank-number:hover { color: var(--primary-color); }
 
@@ -88,9 +89,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
             transition: background-color 0.15s ease, color 0.15s ease;
+            touch-action: manipulation;
         }
 
-        /* Chat Container (~10% narrower: 675px) */
+        /* Chat Container */
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 675px; background-color: white; border: 2px solid var(--border-color);
@@ -112,7 +114,7 @@
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
 
-        /* Tag Modal Overlay for Mobile & Desktop Easy Selection */
+        /* Tag Selection Modal Overlay */
         #tag-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.6); display: none;
@@ -126,7 +128,7 @@
 
         @media (min-width: 901px) { .column-header { cursor: pointer; } .column-header:hover { background-color: #f0f2f5; } }
 
-        /* Mobile Specific Overrides */
+        /* Mobile Viewport Optimizations */
         @media (max-width: 900px) {
             #top-bar { padding: 0 10px; }
             #top-bar-center { display: flex; justify-content: center; align-items: center; }
@@ -134,27 +136,29 @@
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
             .app-container { padding: 10px 2px; }
             .lists-container { justify-content: space-between; }
-            .list-column { flex: 0 0 48%; padding: 5px; box-shadow: none; background-color: transparent; }
-            .rank-image { width: 100%; height: auto; }
+
+            /* Restores 20% central white space for scrolling */
+            .list-column { flex: 0 0 40%; padding: 5px; box-shadow: none; background-color: transparent; }
+            .rank-image { width: 100%; max-width: 130px; height: auto; aspect-ratio: 1 / 1; }
             .rank-item { padding: 5px 0; }
-            .rank-number { font-size: 1.5em; padding: 0 5px; }
-            .image-caption, .rank-difference { font-size: 11px; }
+            .rank-number { font-size: 1.3em; padding: 0 3px; }
+            .image-caption, .rank-difference { font-size: 10px; }
             #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
 
-            /* Mobile Round Tag Circles */
+            /* Compact Tag Circles on Mobile */
             .item-tags-outer {
-                width: 35px;
-                min-width: 35px;
-                max-width: 35px;
+                width: 26px;
+                min-width: 26px;
+                max-width: 26px;
                 padding: 0 2px;
                 align-items: center;
             }
             .tag-chip {
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
                 border-radius: 50%;
                 padding: 0;
-                font-size: 0; /* Hide text, render as dot */
+                font-size: 0;
                 border: 2px solid;
             }
         }
@@ -197,7 +201,7 @@
         </div>
     </div>
 
-    <!-- Tag Selection Overlay Modal -->
+    <!-- Tag Modal -->
     <div id="tag-modal">
         <div class="tag-modal-content">
             <h3 id="tag-modal-title" style="margin-top:0;">Manage Tags</h3>
@@ -220,6 +224,7 @@
             const tagModal = document.getElementById('tag-modal'), tagModalList = document.getElementById('tag-modal-list'), tagModalTitle = document.getElementById('tag-modal-title'), tagModalClose = document.getElementById('tag-modal-close');
             let isEditMode = false, editingItemId = null, activeModalItemId = null, activeModalList = null;
             let globalTags = [];
+            let sortableA = null, sortableB = null;
 
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             const updateLastReadMessage = () => { const lastMessage = chatLog.querySelector('p:last-child'); if (lastMessage && lastMessage.dataset.messageId) { localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId); } };
@@ -287,6 +292,7 @@
             makeHeaderEditable(headerA);
             makeHeaderEditable(headerB);
 
+            // Toggle Edit mode - disables drag-and-drop while active
             editListsBtn.addEventListener('click', () => {
                 isEditMode = !isEditMode;
                 document.body.classList.toggle('edit-mode-active');
@@ -294,6 +300,10 @@
                 editListsBtn.style.backgroundColor = isEditMode ? '#28a745' : '#6c757d';
                 addTagBtn.style.display = isEditMode ? 'inline-block' : 'none';
                 removeTagBtn.style.display = isEditMode ? 'inline-block' : 'none';
+
+                if (sortableA) sortableA.option("disabled", isEditMode);
+                if (sortableB) sortableB.option("disabled", isEditMode);
+
                 if (!isEditMode) socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
             });
 
@@ -338,7 +348,6 @@
                 }
             });
 
-            // Open Tag Modal Overlay
             const openTagModalForItem = (item, targetList) => {
                 activeModalItemId = item.id;
                 activeModalList = targetList;
@@ -362,6 +371,9 @@
                     btn.className = 'tag-chip';
                     btn.style.fontSize = '14px';
                     btn.style.padding = '8px 12px';
+                    btn.style.width = 'auto';
+                    btn.style.height = 'auto';
+                    btn.style.borderRadius = '12px';
                     btn.textContent = tag.name;
 
                     const active = activeTagIds.includes(tag.id);
@@ -377,7 +389,8 @@
                         btn.style.borderColor = tag.color;
                     }
 
-                    btn.addEventListener('click', () => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         if (!item.tags) item.tags = [];
                         const idx = item.tags.indexOf(tag.id);
                         if (idx > -1) {
@@ -398,6 +411,7 @@
             listsContainer.addEventListener('click', (e) => {
                 // Direct Rank Number Click handling
                 if (e.target.classList.contains('rank-number')) {
+                    e.stopPropagation();
                     const itemElement = e.target.closest('.rank-item');
                     if (!itemElement) return;
                     const itemId = Number(itemElement.dataset.id);
@@ -419,7 +433,6 @@
 
                     const targetIndex = targetRank - 1;
                     if (targetIndex !== currentIndex) {
-                        // Strict single-instance move
                         const [movedItem] = targetList.splice(currentIndex, 1);
                         targetList.splice(targetIndex, 0, movedItem);
                         renderAllLists();
@@ -428,8 +441,9 @@
                     return;
                 }
 
-                // Clicking tag containers or tags (opens modal on mobile, or directly toggles)
+                // Tag click handling (Mobile opens modal overlay, Desktop toggles)
                 if (e.target.classList.contains('tag-chip') || e.target.classList.contains('item-tags-outer')) {
+                    e.stopPropagation();
                     const itemElement = e.target.closest('.rank-item');
                     if (!itemElement) return;
                     const itemId = Number(itemElement.dataset.id);
@@ -460,7 +474,7 @@
                     return;
                 }
 
-                // Exact original prompt options when clicking items in Edit mode
+                // Item click in Edit Mode
                 if (!isEditMode) return;
                 const itemElement = e.target.closest('.rank-item');
                 if (!itemElement) return;
@@ -478,7 +492,7 @@
                 renderAllLists();
             });
 
-            // Helper function to deduplicate array by item ID
+            // Helper function to deduplicate list by item ID
             const deduplicateList = (arr) => {
                 const seen = new Set();
                 return arr.filter(item => {
@@ -513,7 +527,6 @@
                 scrollToChatBottom();
                 updateChatPreview();
                 const currentUser = sessionStorage.getItem('chatUsername');
-                // Flash desktop Chat button when chat window is minimized or closed
                 if (msg.user !== currentUser) {
                     if (chatContainer.style.display === 'none' || getComputedStyle(chatContainer).display === 'none') {
                         openChatBtn.classList.add('new-message-flash');
@@ -633,7 +646,7 @@
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
 
             // Sortable initialization with Auto-Scroll disabled
-            new Sortable(rankListA, {
+            sortableA = new Sortable(rankListA, {
                 animation: 150,
                 scroll: false,
                 onEnd: () => {
@@ -643,7 +656,7 @@
                     socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                 }
             });
-            new Sortable(rankListB, {
+            sortableB = new Sortable(rankListB, {
                 animation: 150,
                 scroll: false,
                 onEnd: () => {
