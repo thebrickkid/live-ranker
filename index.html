@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bodybuilder Ranker</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --background-color: #f0f2f5;
+            --container-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --top-bar-height: 60px;
+            --notification-green: #28a745;
+            --rank-lower-red: #dc3545;
+            --rank-same-blue: #3498DB;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding-top: var(--top-bar-height);
+            /* Applied 80% scale effect while maintaining proper layout centring */
+            transform: scale(0.8);
+            transform-origin: top center;
+            width: 125%; /* Inverse of 0.8 scale to ensure full viewport filling */
+            margin-left: -12.5%;
+        }
+        #top-bar {
+            position: fixed; top: 0; left: 0; width: 100%; height: var(--top-bar-height);
+            background-color: var(--container-bg); display: flex; justify-content: space-between;
+            align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000; box-sizing: border-box;
+        }
+        #top-bar-center { flex-grow: 1; text-align: center; display: flex; justify-content: center; gap: 10px; }
+        #chat-preview { display: none; }
+        .button-top-bar {
+            background-color: var(--primary-color); color: white; border: none; padding: 8px 16px;
+            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
+        }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        @keyframes flash-green { 0%, 100% { background-color: var(--primary-color); } 50% { background-color: var(--notification-green); } }
+        .new-message-flash { animation: flash-green 1.5s infinite; }
+        .app-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .lists-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+        .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); flex: 1; }
+        .column-header { text-align: center; font-size: 1.5em; font-weight: bold; color: #6c757d; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
+        .rank-list { list-style-type: none; padding: 0; margin: 0; }
+
+        .rank-item { display: flex; align-items: center; padding: 10px 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); cursor: grab; position: relative; border-radius: 5px; }
+        .rank-item:last-child { border-bottom: none; }
+        .edit-mode-active .rank-item { cursor: pointer; outline: 2px dashed var(--primary-color); }
+
+        /* Layout for Left List (Tags on far left) */
+        #rank-list-a .rank-item { flex-direction: row; }
+
+        /* Layout for Right List (Tags on far right) */
+        #rank-list-b .rank-item { flex-direction: row-reverse; }
+
+        .item-content { display: flex; flex-direction: column; align-items: center; }
+        .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 15px; }
+        .rank-image { width: 170px; height: 170px; object-fit: cover; border-radius: 5px; }
+        .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
+        .rank-difference { font-size: 14px; font-weight: bold; margin: 4px 0 0 0; }
+
+        /* Tag Styles */
+        .item-tags-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 0 10px;
+            min-width: 90px;
+        }
+        .tag-chip {
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 12px;
+            border: 2px solid;
+            background-color: transparent;
+            cursor: pointer;
+            text-align: center;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        #chat-container {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 750px; background-color: white; border: 1px solid var(--border-color);
+            border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001;
+            display: flex; flex-direction: column;
+        }
+        #chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f7f7f7; border-bottom: 1px solid var(--border-color); }
+        #chat-header-buttons { display: flex; gap: 8px; }
+        #color-picker-container { display: flex; align-items: center; gap: 8px; }
+        #color-picker { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 60px; height: 25px; background-color: transparent; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; }
+        #color-picker::-webkit-color-swatch, #color-picker::-moz-color-swatch { border-radius: 3px; border: none; }
+        #clear-chat-btn, #minimize-chat-btn { background: #6c757d; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; }
+        #chat-log { height: 250px; overflow-y: auto; padding: 10px; font-size: 14px; }
+        #chat-log p { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin: 0 0 8px 0; }
+        #chat-log p > span { word-break: break-word; }
+        .message-actions { flex-shrink: 0; white-space: nowrap; }
+        .message-actions button { background: none; border: none; cursor: pointer; font-size: 12px; margin-left: 5px; color: #6c757d; }
+        #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
+        #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
+        #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
+
+        @media (min-width: 901px) { .column-header { cursor: pointer; } .column-header:hover { background-color: #f0f2f5; } }
+        @media (max-width: 900px) {
+            #top-bar { padding: 0 10px; }
+            #top-bar-center { display: none; }
+            #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
+            #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
+            .app-container { padding: 10px 2px; }
+            .lists-container { justify-content: space-between; }
+            .list-column { flex: 0 0 48%; padding: 0; box-shadow: none; background-color: transparent; }
+            .rank-image { width: 100%; height: auto; }
+            .rank-item { padding: 5px 0; }
+            .rank-number { font-size: 1.5em; padding: 0 5px; }
+            .image-caption, .rank-difference { font-size: 11px; }
+            #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <button id="upload-btn" class="button-top-bar">Upload</button>
+        <div id="top-bar-center">
+            <button id="edit-lists-btn" class="button-top-bar button-secondary">Edit</button>
+            <button id="add-tag-btn" class="button-top-bar" style="display: none; background-color: #28a745;">Add Tag</button>
+            <button id="remove-tag-btn" class="button-top-bar" style="display: none; background-color: #dc3545;">Remove Tag</button>
+        </div>
+        <div id="chat-preview"></div>
+        <button id="open-chat-btn" class="button-top-bar">Chat</button>
+    </div>
+    <div class="app-container">
+        <div class="lists-container">
+            <div class="list-column"> <h2 id="header-a" class="column-header">Ben</h2> <ul id="rank-list-a" class="rank-list"></ul> </div>
+            <div class="list-column"> <h2 id="header-b" class="column-header">Steve</h2> <ul id="rank-list-b" class="rank-list"></ul> </div>
+        </div>
+    </div>
+    <div id="chat-container">
+        <div id="chat-header">
+            <div id="color-picker-container">
+                <label for="color-picker">Color</label>
+                <input type="color" id="color-picker" value="#007bff">
+            </div>
+            <div id="chat-header-buttons">
+                <button id="clear-chat-btn">Clear</button>
+                <button id="minimize-chat-btn">Minimize</button>
+            </div>
+        </div>
+        <div id="chat-log"></div>
+        <div id="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="chat-send-btn">Send</button>
+        </div>
+    </div>
+    <div id="crop-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002;"> <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center;"> <h2>Crop Image to Square</h2> <div class="crop-container" style="margin: 20px 0; max-width: 80vw; max-height: 70vh;"><img id="image-to-crop" style="display: block; max-width: 100%;"></div> <button id="crop-save-btn" class="button-primary">Crop Image</button> </div> </div>
+    <input type="file" id="file-input" accept="image/*" style="display: none;">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+            const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), addTagBtn = document.getElementById('add-tag-btn'), removeTagBtn = document.getElementById('remove-tag-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
+            let isEditMode = false, editingItemId = null;
+            let availableTags = []; // Stores { id, name, color }
+
+            const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
+            const updateLastReadMessage = () => { const lastMessage = chatLog.querySelector('p:last-child'); if (lastMessage && lastMessage.dataset.messageId) { localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId); } };
+            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; scrollToChatBottom(); });
+            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; });
+            chatInput.addEventListener('focus', () => { stopChatNotification(); updateLastReadMessage(); });
+            clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
+            const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
+            const updateUserMessageColors = (user, newColor) => { document.querySelectorAll(`strong[data-user="${user}"]`).forEach(el => { el.style.color = newColor; }); };
+            const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
+            colorPicker.value = savedColor;
+            colorPicker.addEventListener('input', (e) => { const newColor = e.target.value; const currentUser = sessionStorage.getItem('chatUsername'); if (currentUser) { localStorage.setItem('chatUsernameColor', newColor); updateUserMessageColors(currentUser, newColor); socket.emit('userColorChange', { user: currentUser, color: newColor }); } });
+
+            const renderChatMessage = (msg) => {
+                const p = document.createElement('p');
+                if (msg.id) { p.dataset.messageId = msg.id; p.dataset.author = msg.user; }
+                const messageContent = document.createElement('span');
+                const strong = document.createElement('strong');
+                strong.textContent = `${msg.user}:`;
+                strong.dataset.user = msg.user;
+                strong.style.color = msg.color || '#007bff';
+                messageContent.appendChild(strong);
+                messageContent.append(` ${msg.text}`);
+                p.appendChild(messageContent);
+                if (msg.id) { const actions = document.createElement('div'); actions.className = 'message-actions'; actions.innerHTML = `<button class="edit-btn">Edit</button><button class="delete-btn">Delete</button>`; p.appendChild(actions); }
+                chatLog.appendChild(p);
+            };
+
+            chatLog.addEventListener('click', (e) => {
+                const messageElement = e.target.closest('p');
+                if (!messageElement || !messageElement.dataset.messageId) return;
+                const messageId = Number(messageElement.dataset.messageId);
+                const messageAuthor = messageElement.dataset.author;
+                const currentUser = sessionStorage.getItem('chatUsername');
+                if (!currentUser) { alert("Please send a message to set your username before managing messages."); return; }
+                const isOwnMessage = (messageAuthor === currentUser);
+                const adminPassword = 'bricks';
+                const performDelete = () => { if (confirm('Are you sure you want to delete this message?')) socket.emit('deleteMessage', { id: messageId }); };
+                const performEdit = () => { const currentText = messageElement.querySelector('span').innerText.split(': ')[1] || ''; const newText = prompt('Edit the message:', currentText); if (newText && newText.trim() !== '' && newText !== currentText) socket.emit('editMessage', { id: messageId, text: newText }); };
+                if (e.target.classList.contains('delete-btn')) { if (isOwnMessage) { performDelete(); } else { const password = prompt("Enter admin password to delete message:"); if (password === adminPassword) performDelete(); else if (password !== null) alert("Incorrect password."); } }
+                if (e.target.classList.contains('edit-btn')) { if (isOwnMessage) { performEdit(); } else { const password = prompt("Enter admin password to edit message:"); if (password === adminPassword) performEdit(); else if (password !== null) alert("Incorrect password."); } }
+            });
+
+            const makeHeaderEditable = (headerElement) => {
+                headerElement.addEventListener('click', () => {
+                    if (window.innerWidth < 901) return;
+                    const currentName = headerElement.textContent;
+                    const newName = prompt('Enter new column name:', currentName);
+                    if (newName && newName.trim() !== '' && newName !== currentName) {
+                        socket.emit('updateHeaders', {
+                            headerA: headerA.id === headerElement.id ? newName : headerA.textContent,
+                            headerB: headerB.id === headerElement.id ? newName : headerB.textContent,
+                        });
+                    }
+                });
+            };
+            makeHeaderEditable(headerA);
+            makeHeaderEditable(headerB);
+
+            // Toggle Edit mode and extra tag options
+            editListsBtn.addEventListener('click', () => {
+                isEditMode = !isEditMode;
+                document.body.classList.toggle('edit-mode-active');
+                editListsBtn.textContent = isEditMode ? "Done" : "Edit";
+                editListsBtn.style.backgroundColor = isEditMode ? '#28a745' : '#6c757d';
+                addTagBtn.style.display = isEditMode ? 'inline-block' : 'none';
+                removeTagBtn.style.display = isEditMode ? 'inline-block' : 'none';
+                if (!isEditMode) socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+            });
+
+            // Add Tag Button Handler
+            addTagBtn.addEventListener('click', () => {
+                const tagName = prompt("Enter tag name (e.g. 'amazing'):");
+                if (!tagName || !tagName.trim()) return;
+                const tagColor = prompt("Enter color name or hex code (e.g. 'red' or '#ff0000'):", "#ff0000");
+                if (!tagColor || !tagColor.trim()) return;
+
+                const newTag = { id: Date.now().toString(), name: tagName.trim(), color: tagColor.trim() };
+                availableTags.push(newTag);
+                socket.emit('updateTags', availableTags);
+                renderAllLists();
+            });
+
+            // Remove Tag Button Handler
+            removeTagBtn.addEventListener('click', () => {
+                if (availableTags.length === 0) { alert("No tags available to remove."); return; }
+                const tagNames = availableTags.map((t, idx) => `${idx + 1}. ${t.name}`).join('\n');
+                const choice = prompt(`Type the number or name of the tag to remove:\n${tagNames}`);
+                if (!choice) return;
+
+                const selectedIdx = parseInt(choice, 10) - 1;
+                let tagToRemove = null;
+
+                if (!isNaN(selectedIdx) && availableTags[selectedIdx]) {
+                    tagToRemove = availableTags[selectedIdx];
+                } else {
+                    tagToRemove = availableTags.find(t => t.name.toLowerCase() === choice.trim().toLowerCase());
+                }
+
+                if (tagToRemove) {
+                    availableTags = availableTags.filter(t => t.id !== tagToRemove.id);
+                    // Also clean up references in items
+                    const cleanItemTags = (list) => list.forEach(item => { if (item.tags) item.tags = item.tags.filter(id => id !== tagToRemove.id); });
+                    cleanItemTags(listA_Items);
+                    cleanItemTags(listB_Items);
+                    socket.emit('updateTags', availableTags);
+                    socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+                    renderAllLists();
+                } else {
+                    alert("Tag not found.");
+                }
+            });
+
+            listsContainer.addEventListener('click', (e) => {
+                // If tag chip clicked, toggle it
+                if (e.target.classList.contains('tag-chip')) {
+                    const tagId = e.target.dataset.tagId;
+                    const itemElement = e.target.closest('.rank-item');
+                    if (!itemElement) return;
+                    const itemId = Number(itemElement.dataset.id);
+                    const listElement = itemElement.closest('ul');
+                    const isListA = (listElement.id === 'rank-list-a');
+                    const targetList = isListA ? listA_Items : listB_Items;
+                    const item = targetList.find(i => i.id === itemId);
+
+                    if (item) {
+                        if (!item.tags) item.tags = [];
+                        const tagIndex = item.tags.indexOf(tagId);
+                        if (tagIndex > -1) {
+                            item.tags.splice(tagIndex, 1);
+                        } else {
+                            item.tags.push(tagId);
+                        }
+                        renderAllLists();
+                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+                    }
+                    return;
+                }
+
+                if (!isEditMode) return;
+                const itemElement = e.target.closest('.rank-item');
+                if (!itemElement) return;
+                const itemId = Number(itemElement.dataset.id);
+                let itemA = listA_Items.find(i => i.id === itemId);
+                let itemB = listB_Items.find(i => i.id === itemId);
+                if (!itemA || !itemB) return;
+                const action = prompt(`Editing "${itemA.text}".\nType 'text', 'link', 'image', or 'delete':`);
+                if (!action) return;
+                const actionLower = action.toLowerCase();
+                if (actionLower === 'text') { const newText = prompt("Enter new text:", itemA.text); if (newText !== null) { itemA.text = newText; itemB.text = newText; }
+                } else if (actionLower === 'link') { const currentUsername = itemA.link ? itemA.link.split('/').pop() : ""; const newUsername = prompt("Enter new Instagram username:", currentUsername); if (newUsername !== null) { const newLink = newUsername ? `https://www.instagram.com/${newUsername.trim()}` : ""; itemA.link = newLink; itemB.link = newLink; }
+                } else if (actionLower === 'image') { editingItemId = itemId; document.getElementById('file-input').click();
+                } else if (actionLower === 'delete') { if (confirm(`Are you sure you want to delete "${itemA.text}"?`)) { listA_Items = listA_Items.filter(i => i.id !== itemId); listB_Items = listB_Items.filter(i => i.id !== itemId); } }
+                renderAllLists();
+            });
+
+            socket.on('initialData', ({ lists, headers, tags }) => {
+                listA_Items = lists.listA; listB_Items = lists.listB;
+                availableTags = tags || [];
+                renderAllLists();
+                if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; }
+            });
+            socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
+            socket.on('tagsUpdated', (tags) => { availableTags = tags; renderAllLists(); });
+            socket.on('chatHistory', (history) => {
+                chatLog.innerHTML = '';
+                history.forEach(renderChatMessage);
+                scrollToChatBottom();
+                updateChatPreview();
+                if (window.innerWidth >= 901) { chatContainer.style.display = 'flex'; } else { chatContainer.style.display = 'none'; }
+                const lastReadId = Number(localStorage.getItem('lastReadMessageId')) || 0;
+                const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+                if (lastMessage && lastMessage.id > lastReadId) { openChatBtn.classList.add('new-message-flash'); }
+            });
+
+            socket.on('chatMessage', (msg) => {
+                renderChatMessage(msg);
+                scrollToChatBottom();
+                updateChatPreview();
+                const currentUser = sessionStorage.getItem('chatUsername');
+                if (msg.user !== currentUser) {
+                    openChatBtn.classList.add('new-message-flash');
+                }
+            });
+
+            socket.on('messageDeleted', ({ id }) => { const el = chatLog.querySelector(`[data-message-id='${id}']`); if (el) el.remove(); updateChatPreview(); });
+            socket.on('messageEdited', ({ id, text, user, color }) => { const p = chatLog.querySelector(`[data-message-id='${id}']`); if (p) { const strong = p.querySelector('strong'); strong.style.color = color || '#007bff'; p.querySelector('span').innerHTML = ''; p.querySelector('span').appendChild(strong); p.querySelector('span').append(` ${text}`); } updateChatPreview(); });
+            socket.on('userColorUpdated', ({ user, color }) => { updateUserMessageColors(user, color); });
+            socket.on('chatCleared', () => { chatLog.innerHTML = ''; });
+
+            const uploadBtn = document.getElementById('upload-btn'), fileInput = document.getElementById('file-input'), modal = document.getElementById('crop-modal'), imageToCrop = document.getElementById('image-to-crop'), cropAndSaveBtn = document.getElementById('crop-save-btn'), rankListA = document.getElementById('rank-list-a'), rankListB = document.getElementById('rank-list-b'), chatSendBtn = document.getElementById('chat-send-btn'), chatPreview = document.getElementById('chat-preview');
+            let cropper = null, listA_Items = [], listB_Items = [];
+
+            const createTagContainerElement = (item) => {
+                const tagsContainer = document.createElement('div');
+                tagsContainer.className = 'item-tags-container';
+                const activeTagIds = item.tags || [];
+
+                availableTags.forEach(tag => {
+                    const tagChip = document.createElement('div');
+                    tagChip.className = 'tag-chip';
+                    tagChip.dataset.tagId = tag.id;
+                    tagChip.textContent = tag.name;
+
+                    const isSelected = activeTagIds.includes(tag.id);
+                    if (isSelected) {
+                        tagChip.style.backgroundColor = tag.color;
+                        tagChip.style.color = '#ffffff';
+                        tagChip.style.borderColor = tag.color;
+                    } else {
+                        tagChip.style.backgroundColor = 'transparent';
+                        tagChip.style.color = tag.color;
+                        tagChip.style.borderColor = tag.color;
+                    }
+
+                    tagsContainer.appendChild(tagChip);
+                });
+
+                return tagsContainer;
+            };
+
+            const createRankItemElement = (item, ownList, otherList) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'rank-item';
+                listItem.dataset.id = item.id;
+
+                const numberDiv = document.createElement('div');
+                numberDiv.className = 'rank-number';
+
+                const itemContentDiv = document.createElement('div');
+                itemContentDiv.className = 'item-content';
+
+                const image = document.createElement('img');
+                image.className = 'rank-image';
+                image.src = item.imageUrl;
+                itemContentDiv.appendChild(image);
+
+                if (item.text) {
+                    const caption = document.createElement('p');
+                    caption.className = 'image-caption';
+                    if (item.link) {
+                        caption.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.text}</a>`;
+                    } else {
+                        caption.textContent = item.text;
+                    }
+                    itemContentDiv.appendChild(caption);
+                }
+
+                const ownIndex = ownList.findIndex(i => i.id === item.id);
+                const otherIndex = otherList.findIndex(i => i.id === item.id);
+                if (ownIndex !== -1 && otherIndex !== -1) {
+                    const diff = ownIndex - otherIndex;
+                    const indicator = document.createElement('p');
+                    indicator.className = 'rank-difference';
+                    if (diff > 0) {
+                        indicator.textContent = `${diff} places lower`;
+                        indicator.style.color = 'var(--rank-lower-red)';
+                        itemContentDiv.appendChild(indicator);
+                    } else if (diff < 0) {
+                        indicator.textContent = `${Math.abs(diff)} places higher`;
+                        indicator.style.color = 'var(--notification-green)';
+                        itemContentDiv.appendChild(indicator);
+                    } else {
+                        indicator.textContent = `same position`;
+                        indicator.style.color = 'var(--rank-same-blue)';
+                        itemContentDiv.appendChild(indicator);
+                    }
+                }
+
+                const tagsContainer = createTagContainerElement(item);
+
+                // Append order handles external tag display (tags on left/right edges)
+                listItem.appendChild(tagsContainer);
+                listItem.appendChild(numberDiv);
+                listItem.appendChild(itemContentDiv);
+
+                return listItem;
+            };
+
+            const renderSingleList = (listElement, itemsArray, otherItemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item, itemsArray, otherItemsArray)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
+            const renderAllLists = () => { renderSingleList(rankListA, listA_Items, listB_Items); renderSingleList(rankListB, listB_Items, listA_Items); };
+            const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
+
+            new Sortable(rankListA, { animation: 150, onEnd: () => { listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id)); renderAllLists(); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
+            new Sortable(rankListB, { animation: 150, onEnd: () => { listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id)); renderAllLists(); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } });
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (event) => { const files = event.target.files; if (files && files.length > 0) { const reader = new FileReader(); reader.onload = (e) => { imageToCrop.src = e.target.result; modal.style.display = 'flex'; if (cropper) cropper.destroy(); cropper = new Cropper(imageToCrop, { aspectRatio: 1 / 1, viewMode: 1 }); }; reader.readAsDataURL(files[0]); } fileInput.value = ''; });
+            cropAndSaveBtn.addEventListener('click', () => { if (!cropper) return; cropAndSaveBtn.disabled = true; cropAndSaveBtn.textContent = "Uploading..."; cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => { const formData = new FormData(); formData.append('image', blob, 'upload.jpg'); if (editingItemId) { formData.append('id', editingItemId); const itemToEdit = listA_Items.find(i => i.id === editingItemId); formData.append('oldImageUrl', itemToEdit.imageUrl); } fetch('/upload-image', { method: 'POST', body: formData }).then(response => response.json()).then(data => { if (data.error) { throw new Error(data.error); } if (editingItemId) { let itemA = listA_Items.find(i => i.id === editingItemId); let itemB = listB_Items.find(i => i.id === editingItemId); if (itemA) itemA.imageUrl = data.imageUrl; if (itemB) itemB.imageUrl = data.imageUrl; editingItemId = null; renderAllLists(); } else { const description = prompt("Enter name/description:", ""); const instaUser = prompt("Enter Instagram username (optional):", ""); let link = instaUser ? `https://www.instagram.com/${instaUser.trim()}` : ""; const newItem = { id: Date.now(), imageUrl: data.imageUrl, text: description || "", link: link, tags: [] }; listA_Items.push(JSON.parse(JSON.stringify(newItem))); listB_Items.push(JSON.parse(JSON.stringify(newItem))); socket.emit('updateLists', { listA: listA_Items, listB: listB_Items }); } modal.style.display = 'none'; }).catch(error => { console.error('Upload failed:', error); alert('Upload failed: ' + error.message); }).finally(() => { cropAndSaveBtn.disabled = false; cropAndSaveBtn.textContent = "Crop Image"; if(cropper) cropper.destroy(); }); }, 'image/jpeg'); });
+            const handleSendMessage = () => { let currentUser = sessionStorage.getItem('chatUsername'); if (!currentUser) { const newName = prompt("Enter your name:", ""); if (newName) { currentUser = newName; sessionStorage.setItem('chatUsername', newName); } else { return; } } const text = chatInput.value.trim(); if (text) { const color = localStorage.getItem('chatUsernameColor') || '#007bff'; socket.emit('chatMessage', { user: currentUser, text: text, id: Date.now(), color: color }); chatInput.value = ''; } };
+            chatSendBtn.addEventListener('click', handleSendMessage);
+            chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
+            socket.on('connect', () => socket.emit('requestInitialData'));
+            socket.on('rankingLists', (lists) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); });
+        });
+    </script>
+</body>
+</html>
