@@ -11,7 +11,7 @@
             --primary-hover: #0056b3;
             --background-color: #f0f2f5;
             --container-bg: #ffffff;
-            --border-color: #e0e0e0;
+            --border-color: #555555; /* Darker charcoal border for chat/containers */
             --top-bar-height: 60px;
             --notification-green: #28a745;
             --rank-lower-red: #dc3545;
@@ -22,7 +22,7 @@
             background-color: var(--background-color);
             margin: 0;
             padding-top: var(--top-bar-height);
-            /* Scale overall website to ~78% */
+            /* Overall scale to ~78% */
             zoom: 0.78;
         }
         #top-bar {
@@ -31,7 +31,7 @@
             align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1000; box-sizing: border-box;
         }
-        #top-bar-center { flex-grow: 1; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        #top-bar-center { flex-grow: 1; text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px; }
         #chat-preview { display: none; }
         .button-top-bar {
             background-color: var(--primary-color); color: white; border: none; padding: 8px 16px;
@@ -49,7 +49,8 @@
         .edit-mode-active .rank-item { cursor: pointer; outline: 2px dashed var(--primary-color); }
         #rank-list-b .rank-item { flex-direction: row-reverse; }
         .item-content { display: flex; flex-direction: column; align-items: center; }
-        .rank-number { font-size: 2em; font-weight: bold; color: #ccc; padding: 0 10px; }
+        /* Darker charcoal ranking numbers */
+        .rank-number { font-size: 2em; font-weight: bold; color: #444444; padding: 0 10px; }
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
         .rank-difference {
@@ -58,7 +59,7 @@
             margin: 4px 0 0 0;
         }
 
-        /* Fixed-width tag column outside numbers to prevent pixel movement */
+        /* Outer Tag Container & Styling */
         .item-tags-outer {
             display: flex;
             flex-direction: column;
@@ -82,9 +83,10 @@
             transition: background-color 0.15s ease, color 0.15s ease;
         }
 
+        /* Chat Container (~10% narrower: 675px) */
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 750px; background-color: white; border: 1px solid var(--border-color);
+            width: 675px; background-color: white; border: 2px solid var(--border-color);
             border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); z-index: 1001;
             display: flex; flex-direction: column;
         }
@@ -277,7 +279,7 @@
             });
 
             listsContainer.addEventListener('click', (e) => {
-                // Handle clicking tags (works outside of Edit mode)
+                // Toggling tags on click
                 if (e.target.classList.contains('tag-chip')) {
                     const tagId = e.target.dataset.tagId;
                     const itemElement = e.target.closest('.rank-item');
@@ -302,7 +304,7 @@
                     return;
                 }
 
-                // Handle exact original Edit mode menu
+                // Exact original prompt options when clicking items in Edit mode
                 if (!isEditMode) return;
                 const itemElement = e.target.closest('.rank-item');
                 if (!itemElement) return;
@@ -339,13 +341,11 @@
                 if (lastMessage && lastMessage.id > lastReadId) { openChatBtn.classList.add('new-message-flash'); }
             });
 
-            // CHANGE: Final update to the chat message listener
             socket.on('chatMessage', (msg) => {
                 renderChatMessage(msg);
                 scrollToChatBottom();
                 updateChatPreview();
                 const currentUser = sessionStorage.getItem('chatUsername');
-                // Always flash for a new message from another user
                 if (msg.user !== currentUser) {
                     openChatBtn.classList.add('new-message-flash');
                 }
