@@ -39,6 +39,7 @@
         }
         @keyframes flash-green { 0%, 100% { background-color: var(--primary-color); } 50% { background-color: var(--notification-green); } }
         .new-message-flash { animation: flash-green 1.5s infinite !important; }
+
         .app-container { max-width: 1550px; margin: 0 auto; padding: 20px; }
         .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
@@ -65,7 +66,7 @@
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
         .rank-difference { font-size: 14px; font-weight: bold; margin: 4px 0 0 0; }
 
-        /* Outer Desktop Tag Container */
+        /* Desktop Tag Layout */
         .item-tags-outer {
             display: flex;
             flex-direction: column;
@@ -90,6 +91,40 @@
             text-overflow: ellipsis;
             transition: background-color 0.15s ease, color 0.15s ease;
             touch-action: manipulation;
+        }
+
+        /* Mobile Tag Legend Banner */
+        #tag-legend-banner {
+            display: none;
+            background-color: #ffffff;
+            border-bottom: 2px solid var(--border-color);
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 12px;
+            color: #333;
+            background-color: #f0f2f5;
+        }
+        .legend-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            color: white;
+            font-size: 11px;
         }
 
         /* Chat Container */
@@ -131,35 +166,36 @@
         /* Mobile Viewport Optimizations */
         @media (max-width: 900px) {
             #top-bar { padding: 0 10px; }
-            #top-bar-center { display: flex; justify-content: center; align-items: center; }
-            #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
+            #top-bar-center { display: flex; justify-content: center; align-items: center; gap: 5px; }
+            #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 5px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
             .app-container { padding: 10px 2px; }
             .lists-container { justify-content: space-between; }
 
-            /* Restores 20% central white space for scrolling */
+            /* Keeps 20% center gap for page scrolling */
             .list-column { flex: 0 0 40%; padding: 5px; box-shadow: none; background-color: transparent; }
+            .rank-item { flex-direction: column !important; padding: 8px 0; }
             .rank-image { width: 100%; max-width: 130px; height: auto; aspect-ratio: 1 / 1; }
-            .rank-item { padding: 5px 0; }
-            .rank-number { font-size: 1.3em; padding: 0 3px; }
-            .image-caption, .rank-difference { font-size: 10px; }
+            .rank-number { font-size: 1.4em; padding: 4px 0; }
+            .image-caption, .rank-difference { font-size: 11px; }
             #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
 
-            /* Compact Tag Circles on Mobile */
+            /* Tags moved underneath item card on mobile */
             .item-tags-outer {
-                width: 26px;
-                min-width: 26px;
-                max-width: 26px;
-                padding: 0 2px;
-                align-items: center;
+                width: 100%;
+                min-width: 100%;
+                max-width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 5px;
+                padding: 6px 0 0 0;
             }
             .tag-chip {
-                width: 16px;
-                height: 16px;
-                border-radius: 50%;
-                padding: 0;
-                font-size: 0;
-                border: 2px solid;
+                padding: 3px 7px;
+                font-size: 11px;
+                border-radius: 10px;
+                font-weight: bold;
             }
         }
     </style>
@@ -171,18 +207,26 @@
             <button id="edit-lists-btn" class="button-top-bar" style="background-color: #6c757d;">Edit</button>
         </div>
         <div id="top-bar-center">
+            <button id="toggle-legend-btn" class="button-top-bar" style="background-color: #17a2b8; padding: 6px 10px; font-size: 12px;">Tag Key</button>
             <button id="add-tag-btn" class="button-top-bar" style="display: none; background-color: #28a745;">Add Tag</button>
             <button id="remove-tag-btn" class="button-top-bar" style="display: none; background-color: #dc3545;">Remove Tag</button>
         </div>
         <div id="chat-preview"></div>
         <button id="open-chat-btn" class="button-top-bar">Chat</button>
     </div>
+
     <div class="app-container">
+        <!-- Collapsible Mobile Tag Key -->
+        <div id="tag-legend-banner">
+            <div id="legend-items" class="legend-items"></div>
+        </div>
+
         <div class="lists-container">
             <div class="list-column"> <h2 id="header-a" class="column-header">Ben</h2> <ul id="rank-list-a" class="rank-list"></ul> </div>
             <div class="list-column"> <h2 id="header-b" class="column-header">Steve</h2> <ul id="rank-list-b" class="rank-list"></ul> </div>
         </div>
     </div>
+
     <div id="chat-container">
         <div id="chat-header">
             <div id="color-picker-container">
@@ -222,6 +266,8 @@
             const socket = io();
             const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), addTagBtn = document.getElementById('add-tag-btn'), removeTagBtn = document.getElementById('remove-tag-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
             const tagModal = document.getElementById('tag-modal'), tagModalList = document.getElementById('tag-modal-list'), tagModalTitle = document.getElementById('tag-modal-title'), tagModalClose = document.getElementById('tag-modal-close');
+            const toggleLegendBtn = document.getElementById('toggle-legend-btn'), tagLegendBanner = document.getElementById('tag-legend-banner'), legendItems = document.getElementById('legend-items');
+
             let isEditMode = false, editingItemId = null, activeModalItemId = null, activeModalList = null;
             let globalTags = [];
             let sortableA = null, sortableB = null;
@@ -245,6 +291,37 @@
             const savedColor = localStorage.getItem('chatUsernameColor') || '#007bff';
             colorPicker.value = savedColor;
             colorPicker.addEventListener('input', (e) => { const newColor = e.target.value; const currentUser = sessionStorage.getItem('chatUsername'); if (currentUser) { localStorage.setItem('chatUsernameColor', newColor); updateUserMessageColors(currentUser, newColor); socket.emit('userColorChange', { user: currentUser, color: newColor }); } });
+
+            // Tag Legend Key Toggle
+            toggleLegendBtn.addEventListener('click', () => {
+                const isVisible = tagLegendBanner.style.display === 'block';
+                tagLegendBanner.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) renderTagLegend();
+            });
+
+            const getTagInitial = (tagName) => {
+                if (!tagName) return 'T';
+                return tagName.trim().substring(0, 3);
+            };
+
+            const renderTagLegend = () => {
+                legendItems.innerHTML = '';
+                if (globalTags.length === 0) {
+                    legendItems.innerHTML = '<span style="font-size:12px; color:#6c757d;">No tags created yet</span>';
+                    return;
+                }
+                globalTags.forEach(tag => {
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+                    const badge = document.createElement('span');
+                    badge.className = 'legend-badge';
+                    badge.style.backgroundColor = tag.color;
+                    badge.textContent = getTagInitial(tag.name);
+                    item.appendChild(badge);
+                    item.append(` ${tag.name}`);
+                    legendItems.appendChild(item);
+                });
+            };
 
             const renderChatMessage = (msg) => {
                 const p = document.createElement('p');
@@ -307,7 +384,7 @@
                 if (!isEditMode) socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
             });
 
-            // Add Tag Button
+            // Add Tag Button with Stringified ID match
             addTagBtn.addEventListener('click', () => {
                 const name = prompt("Enter tag name (e.g. 'amazing'):");
                 if (!name || !name.trim()) return;
@@ -318,6 +395,7 @@
                 globalTags.push(newTag);
                 socket.emit('updateTags', globalTags);
                 renderAllLists();
+                renderTagLegend();
             });
 
             // Remove Tag Button
@@ -336,13 +414,15 @@
                 }
 
                 if (targetTag) {
-                    globalTags = globalTags.filter(t => t.id !== targetTag.id);
-                    const cleanItemTags = (list) => list.forEach(i => { if (i.tags) i.tags = i.tags.filter(tagId => tagId !== targetTag.id); });
+                    const tagIdToRemove = String(targetTag.id);
+                    globalTags = globalTags.filter(t => String(t.id) !== tagIdToRemove);
+                    const cleanItemTags = (list) => list.forEach(i => { if (i.tags) i.tags = i.tags.filter(tagId => String(tagId) !== tagIdToRemove); });
                     cleanItemTags(listA_Items);
                     cleanItemTags(listB_Items);
                     socket.emit('updateTags', globalTags);
                     socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                     renderAllLists();
+                    renderTagLegend();
                 } else {
                     alert("Tag not found.");
                 }
@@ -364,9 +444,10 @@
                 }
                 const item = activeModalList.find(i => i.id === activeModalItemId);
                 if (!item) return;
-                const activeTagIds = item.tags || [];
+                const activeTagIds = (item.tags || []).map(String);
 
                 globalTags.forEach(tag => {
+                    const tagIdStr = String(tag.id);
                     const btn = document.createElement('div');
                     btn.className = 'tag-chip';
                     btn.style.fontSize = '14px';
@@ -376,7 +457,7 @@
                     btn.style.borderRadius = '12px';
                     btn.textContent = tag.name;
 
-                    const active = activeTagIds.includes(tag.id);
+                    const active = activeTagIds.includes(tagIdStr);
                     if (active) {
                         btn.style.backgroundColor = tag.color;
                         btn.style.color = '#ffffff';
@@ -392,11 +473,12 @@
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         if (!item.tags) item.tags = [];
-                        const idx = item.tags.indexOf(tag.id);
+                        const strTags = item.tags.map(String);
+                        const idx = strTags.indexOf(tagIdStr);
                         if (idx > -1) {
                             item.tags.splice(idx, 1);
                         } else {
-                            item.tags.push(tag.id);
+                            item.tags.push(tagIdStr);
                         }
                         renderTagModalList();
                         renderAllLists();
@@ -441,7 +523,7 @@
                     return;
                 }
 
-                // Tag click handling (Mobile opens modal overlay, Desktop toggles)
+                // Tag click handling
                 if (e.target.classList.contains('tag-chip') || e.target.classList.contains('item-tags-outer')) {
                     e.stopPropagation();
                     const itemElement = e.target.closest('.rank-item');
@@ -458,14 +540,15 @@
                     }
 
                     if (e.target.classList.contains('tag-chip')) {
-                        const tagId = e.target.dataset.tagId;
+                        const tagIdStr = String(e.target.dataset.tagId);
                         if (item) {
                             if (!item.tags) item.tags = [];
-                            const idx = item.tags.indexOf(tagId);
+                            const strTags = item.tags.map(String);
+                            const idx = strTags.indexOf(tagIdStr);
                             if (idx > -1) {
                                 item.tags.splice(idx, 1);
                             } else {
-                                item.tags.push(tagId);
+                                item.tags.push(tagIdStr);
                             }
                             renderAllLists();
                             socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
@@ -507,10 +590,11 @@
                 listB_Items = deduplicateList(lists.listB || []);
                 globalTags = tags || [];
                 renderAllLists();
+                renderTagLegend();
                 if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; }
             });
             socket.on('headersUpdated', (headers) => { headerA.textContent = headers.headerA; headerB.textContent = headers.headerB; });
-            socket.on('tagsUpdated', (tags) => { globalTags = tags; renderAllLists(); });
+            socket.on('tagsUpdated', (tags) => { globalTags = tags; renderAllLists(); renderTagLegend(); });
             socket.on('chatHistory', (history) => {
                 chatLog.innerHTML = '';
                 history.forEach(renderChatMessage);
@@ -545,15 +629,22 @@
             const createTagContainer = (item) => {
                 const container = document.createElement('div');
                 container.className = 'item-tags-outer';
-                const itemActiveTags = item.tags || [];
+                const itemActiveTagIds = (item.tags || []).map(String);
 
                 globalTags.forEach(tag => {
+                    const tagIdStr = String(tag.id);
                     const chip = document.createElement('div');
                     chip.className = 'tag-chip';
-                    chip.dataset.tagId = tag.id;
-                    chip.textContent = tag.name;
+                    chip.dataset.tagId = tagIdStr;
 
-                    const active = itemActiveTags.includes(tag.id);
+                    // Display full tag name on desktop, or 3-letter initial on mobile
+                    if (window.innerWidth <= 900) {
+                        chip.textContent = getTagInitial(tag.name);
+                    } else {
+                        chip.textContent = tag.name;
+                    }
+
+                    const active = itemActiveTagIds.includes(tagIdStr);
                     if (active) {
                         chip.style.backgroundColor = tag.color;
                         chip.style.color = '#ffffff';
@@ -645,7 +736,6 @@
             };
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
 
-            // Sortable initialization with Auto-Scroll disabled
             sortableA = new Sortable(rankListA, {
                 animation: 150,
                 scroll: false,
