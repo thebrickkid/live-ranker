@@ -13,9 +13,9 @@ const { v4: uuidv4 } = require('uuid');
 const serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 initializeApp({
-  credential: cert(serviceAccount),
-  projectId: 'bb-ranker',
-  storageBucket: 'bb-ranker.firebasestorage.app'
+    credential: cert(serviceAccount),
+              projectId: 'bb-ranker',
+              storageBucket: 'bb-ranker.firebasestorage.app'
 });
 
 const db = getFirestore();
@@ -29,7 +29,7 @@ const PORT = process.env.PORT || 3000;
 // --- 2. FILE UPLOAD HANDLING ---
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+                      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
 app.post('/upload-image', upload.single('image'), async (req, res) => {
@@ -63,7 +63,7 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
 // --- 3. SERVE THE WEBSITE & SOCKET.IO LOGIC ---
 app.use(express.static('public'));
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+    res.sendFile(__dirname + '/public/index.html');
 });
 
 io.on('connection', (socket) => {
@@ -71,6 +71,7 @@ io.on('connection', (socket) => {
         try {
             const chatSnapshot = await db.collection('chat').orderBy('timestamp').get();
             const chatHistory = chatSnapshot.docs.map(doc => doc.data());
+            socket.emit('chatHistory', chatHistory);
 
             const listASnapshot = await db.collection('rankingLists').doc('listA').get();
             const listBSnapshot = await db.collection('rankingLists').doc('listB').get();
@@ -188,5 +189,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`✅ Server is running on port ${PORT}`);
+    console.log(`✅ Server is running on port ${PORT}`);
 });
