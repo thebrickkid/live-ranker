@@ -30,6 +30,7 @@
             align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1000; box-sizing: border-box;
         }
+        #top-bar-left { display: flex; gap: 8px; align-items: center; }
         #top-bar-center { flex-grow: 1; text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px; }
         #chat-preview { display: none; }
         .button-top-bar {
@@ -37,7 +38,7 @@
             font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
         }
         @keyframes flash-green { 0%, 100% { background-color: var(--primary-color); } 50% { background-color: var(--notification-green); } }
-        .new-message-flash { animation: flash-green 1.5s infinite; }
+        .new-message-flash { animation: flash-green 1.5s infinite !important; }
         .app-container { max-width: 1550px; margin: 0 auto; padding: 20px; }
         .lists-container { display: flex; justify-content: space-between; align-items: flex-start; }
         .list-column { background-color: var(--container-bg); padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
@@ -49,7 +50,6 @@
         #rank-list-b .rank-item { flex-direction: row-reverse; }
         .item-content { display: flex; flex-direction: column; align-items: center; }
 
-        /* Rank Number: Clickable directly */
         .rank-number {
             font-size: 2em;
             font-weight: bold;
@@ -58,19 +58,13 @@
             cursor: pointer;
             user-select: none;
         }
-        .rank-number:hover {
-            color: var(--primary-color);
-        }
+        .rank-number:hover { color: var(--primary-color); }
 
         .rank-image { width: 200px; height: 200px; object-fit: cover; border-radius: 5px; }
         .image-caption { margin: 8px 0 0 0; padding: 5px 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 14px; text-align: center; }
-        .rank-difference {
-            font-size: 14px;
-            font-weight: bold;
-            margin: 4px 0 0 0;
-        }
+        .rank-difference { font-size: 14px; font-weight: bold; margin: 4px 0 0 0; }
 
-        /* Single-line Tags Outer Container */
+        /* Outer Desktop Tag Container */
         .item-tags-outer {
             display: flex;
             flex-direction: column;
@@ -96,6 +90,7 @@
             transition: background-color 0.15s ease, color 0.15s ease;
         }
 
+        /* Chat Container (~10% narrower: 675px) */
         #chat-container {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 675px; background-color: white; border: 2px solid var(--border-color);
@@ -116,28 +111,62 @@
         #chat-input-area { display: flex; border-top: 1px solid var(--border-color); }
         #chat-input { flex-grow: 1; border: none; padding: 12px; font-size: 14px; }
         #chat-send-btn { border: none; background-color: var(--primary-color); color: white; padding: 0 20px; cursor: pointer; }
+
+        /* Tag Modal Overlay for Mobile & Desktop Easy Selection */
+        #tag-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); display: none;
+            justify-content: center; align-items: center; z-index: 1005;
+        }
+        .tag-modal-content {
+            background-color: white; padding: 20px; border-radius: 8px;
+            max-width: 320px; width: 85%; text-align: center;
+        }
+        .tag-modal-list { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
+
         @media (min-width: 901px) { .column-header { cursor: pointer; } .column-header:hover { background-color: #f0f2f5; } }
+
+        /* Mobile Specific Overrides */
         @media (max-width: 900px) {
             #top-bar { padding: 0 10px; }
-            #top-bar-center { display: none; }
+            #top-bar-center { display: flex; justify-content: center; align-items: center; }
             #chat-preview { display: block; flex-grow: 1; text-align: center; font-size: 12px; color: #555; overflow: hidden; white-space: nowrap; padding: 0 10px; }
             #chat-preview p { margin: 1px 0; text-overflow: ellipsis; overflow: hidden; }
             .app-container { padding: 10px 2px; }
             .lists-container { justify-content: space-between; }
-            .list-column { flex: 0 0 35%; padding: 0; box-shadow: none; background-color: transparent; }
+            .list-column { flex: 0 0 48%; padding: 5px; box-shadow: none; background-color: transparent; }
             .rank-image { width: 100%; height: auto; }
             .rank-item { padding: 5px 0; }
             .rank-number { font-size: 1.5em; padding: 0 5px; }
             .image-caption, .rank-difference { font-size: 11px; }
             #chat-container { display: none; width: 100%; top: auto; bottom: 0; left: 0; max-width: 100%; border-radius: 8px 8px 0 0; transform: none; }
+
+            /* Mobile Round Tag Circles */
+            .item-tags-outer {
+                width: 35px;
+                min-width: 35px;
+                max-width: 35px;
+                padding: 0 2px;
+                align-items: center;
+            }
+            .tag-chip {
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                padding: 0;
+                font-size: 0; /* Hide text, render as dot */
+                border: 2px solid;
+            }
         }
     </style>
 </head>
 <body>
     <div id="top-bar">
-        <button id="upload-btn" class="button-top-bar">Upload</button>
-        <div id="top-bar-center">
+        <div id="top-bar-left">
+            <button id="upload-btn" class="button-top-bar">Upload</button>
             <button id="edit-lists-btn" class="button-top-bar" style="background-color: #6c757d;">Edit</button>
+        </div>
+        <div id="top-bar-center">
             <button id="add-tag-btn" class="button-top-bar" style="display: none; background-color: #28a745;">Add Tag</button>
             <button id="remove-tag-btn" class="button-top-bar" style="display: none; background-color: #dc3545;">Remove Tag</button>
         </div>
@@ -167,6 +196,16 @@
             <button id="chat-send-btn">Send</button>
         </div>
     </div>
+
+    <!-- Tag Selection Overlay Modal -->
+    <div id="tag-modal">
+        <div class="tag-modal-content">
+            <h3 id="tag-modal-title" style="margin-top:0;">Manage Tags</h3>
+            <div id="tag-modal-list" class="tag-modal-list"></div>
+            <button id="tag-modal-close" class="button-top-bar" style="background-color: #6c757d;">Close</button>
+        </div>
+    </div>
+
     <div id="crop-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1002;"> <div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center;"> <h2>Crop Image to Square</h2> <div class="crop-container" style="margin: 20px 0; max-width: 80vw; max-height: 70vh;"><img id="image-to-crop" style="display: block; max-width: 100%;"></div> <button id="crop-save-btn" class="button-primary">Crop Image</button> </div> </div>
     <input type="file" id="file-input" accept="image/*" style="display: none;">
 
@@ -178,13 +217,22 @@
         document.addEventListener('DOMContentLoaded', () => {
             const socket = io();
             const openChatBtn = document.getElementById('open-chat-btn'), chatContainer = document.getElementById('chat-container'), minimizeChatBtn = document.getElementById('minimize-chat-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), chatLog = document.getElementById('chat-log'), chatInput = document.getElementById('chat-input'), colorPicker = document.getElementById('color-picker'), editListsBtn = document.getElementById('edit-lists-btn'), addTagBtn = document.getElementById('add-tag-btn'), removeTagBtn = document.getElementById('remove-tag-btn'), listsContainer = document.querySelector('.lists-container'), headerA = document.getElementById('header-a'), headerB = document.getElementById('header-b');
-            let isEditMode = false, editingItemId = null;
+            const tagModal = document.getElementById('tag-modal'), tagModalList = document.getElementById('tag-modal-list'), tagModalTitle = document.getElementById('tag-modal-title'), tagModalClose = document.getElementById('tag-modal-close');
+            let isEditMode = false, editingItemId = null, activeModalItemId = null, activeModalList = null;
             let globalTags = [];
 
             const stopChatNotification = () => openChatBtn.classList.remove('new-message-flash');
             const updateLastReadMessage = () => { const lastMessage = chatLog.querySelector('p:last-child'); if (lastMessage && lastMessage.dataset.messageId) { localStorage.setItem('lastReadMessageId', lastMessage.dataset.messageId); } };
-            openChatBtn.addEventListener('click', () => { chatContainer.style.display = 'flex'; scrollToChatBottom(); });
-            minimizeChatBtn.addEventListener('click', () => { chatContainer.style.display = 'none'; });
+
+            openChatBtn.addEventListener('click', () => {
+                chatContainer.style.display = 'flex';
+                stopChatNotification();
+                scrollToChatBottom();
+            });
+            minimizeChatBtn.addEventListener('click', () => {
+                chatContainer.style.display = 'none';
+            });
+
             chatInput.addEventListener('focus', () => { stopChatNotification(); updateLastReadMessage(); });
             clearChatBtn.addEventListener('click', () => { const password = prompt("Enter admin password to clear chat:"); if (password === 'bricks') { if (window.confirm('ADMIN: Delete entire chat history?')) socket.emit('clearChat'); } else if (password !== null) alert("Incorrect password."); });
             const scrollToChatBottom = () => { setTimeout(() => { chatLog.scrollTop = chatLog.scrollHeight; }, 50); };
@@ -290,8 +338,65 @@
                 }
             });
 
+            // Open Tag Modal Overlay
+            const openTagModalForItem = (item, targetList) => {
+                activeModalItemId = item.id;
+                activeModalList = targetList;
+                tagModalTitle.textContent = `Tags for "${item.text || 'Item'}"`;
+                renderTagModalList();
+                tagModal.style.display = 'flex';
+            };
+
+            const renderTagModalList = () => {
+                tagModalList.innerHTML = '';
+                if (globalTags.length === 0) {
+                    tagModalList.innerHTML = '<p style="color:#6c757d;">No tags created yet.</p>';
+                    return;
+                }
+                const item = activeModalList.find(i => i.id === activeModalItemId);
+                if (!item) return;
+                const activeTagIds = item.tags || [];
+
+                globalTags.forEach(tag => {
+                    const btn = document.createElement('div');
+                    btn.className = 'tag-chip';
+                    btn.style.fontSize = '14px';
+                    btn.style.padding = '8px 12px';
+                    btn.textContent = tag.name;
+
+                    const active = activeTagIds.includes(tag.id);
+                    if (active) {
+                        btn.style.backgroundColor = tag.color;
+                        btn.style.color = '#ffffff';
+                        btn.style.fontWeight = 'bold';
+                        btn.style.borderColor = tag.color;
+                    } else {
+                        btn.style.backgroundColor = 'transparent';
+                        btn.style.color = tag.color;
+                        btn.style.fontWeight = 'normal';
+                        btn.style.borderColor = tag.color;
+                    }
+
+                    btn.addEventListener('click', () => {
+                        if (!item.tags) item.tags = [];
+                        const idx = item.tags.indexOf(tag.id);
+                        if (idx > -1) {
+                            item.tags.splice(idx, 1);
+                        } else {
+                            item.tags.push(tag.id);
+                        }
+                        renderTagModalList();
+                        renderAllLists();
+                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
+                    });
+                    tagModalList.appendChild(btn);
+                });
+            };
+
+            tagModalClose.addEventListener('click', () => { tagModal.style.display = 'none'; });
+
             listsContainer.addEventListener('click', (e) => {
-                // Direct Rank Number Click handling (e.g., Click '34' -> type '1')
+                // Direct Rank Number Click handling
                 if (e.target.classList.contains('rank-number')) {
                     const itemElement = e.target.closest('.rank-item');
                     if (!itemElement) return;
@@ -314,6 +419,7 @@
 
                     const targetIndex = targetRank - 1;
                     if (targetIndex !== currentIndex) {
+                        // Strict single-instance move
                         const [movedItem] = targetList.splice(currentIndex, 1);
                         targetList.splice(targetIndex, 0, movedItem);
                         renderAllLists();
@@ -322,9 +428,8 @@
                     return;
                 }
 
-                // Toggling tags on click
-                if (e.target.classList.contains('tag-chip')) {
-                    const tagId = e.target.dataset.tagId;
+                // Clicking tag containers or tags (opens modal on mobile, or directly toggles)
+                if (e.target.classList.contains('tag-chip') || e.target.classList.contains('item-tags-outer')) {
                     const itemElement = e.target.closest('.rank-item');
                     if (!itemElement) return;
                     const itemId = Number(itemElement.dataset.id);
@@ -333,16 +438,24 @@
                     const targetList = isListA ? listA_Items : listB_Items;
                     const item = targetList.find(i => i.id === itemId);
 
-                    if (item) {
-                        if (!item.tags) item.tags = [];
-                        const idx = item.tags.indexOf(tagId);
-                        if (idx > -1) {
-                            item.tags.splice(idx, 1);
-                        } else {
-                            item.tags.push(tagId);
+                    if (window.innerWidth <= 900) {
+                        if (item) openTagModalForItem(item, targetList);
+                        return;
+                    }
+
+                    if (e.target.classList.contains('tag-chip')) {
+                        const tagId = e.target.dataset.tagId;
+                        if (item) {
+                            if (!item.tags) item.tags = [];
+                            const idx = item.tags.indexOf(tagId);
+                            if (idx > -1) {
+                                item.tags.splice(idx, 1);
+                            } else {
+                                item.tags.push(tagId);
+                            }
+                            renderAllLists();
+                            socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                         }
-                        renderAllLists();
-                        socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                     }
                     return;
                 }
@@ -365,8 +478,19 @@
                 renderAllLists();
             });
 
+            // Helper function to deduplicate array by item ID
+            const deduplicateList = (arr) => {
+                const seen = new Set();
+                return arr.filter(item => {
+                    if (seen.has(item.id)) return false;
+                    seen.add(item.id);
+                    return true;
+                });
+            };
+
             socket.on('initialData', ({ lists, headers, tags }) => {
-                listA_Items = lists.listA; listB_Items = lists.listB;
+                listA_Items = deduplicateList(lists.listA || []);
+                listB_Items = deduplicateList(lists.listB || []);
                 globalTags = tags || [];
                 renderAllLists();
                 if (headers) { headerA.textContent = headers.headerA || 'Ben'; headerB.textContent = headers.headerB || 'Steve'; }
@@ -389,8 +513,11 @@
                 scrollToChatBottom();
                 updateChatPreview();
                 const currentUser = sessionStorage.getItem('chatUsername');
+                // Flash desktop Chat button when chat window is minimized or closed
                 if (msg.user !== currentUser) {
-                    openChatBtn.classList.add('new-message-flash');
+                    if (chatContainer.style.display === 'none' || getComputedStyle(chatContainer).display === 'none') {
+                        openChatBtn.classList.add('new-message-flash');
+                    }
                 }
             });
 
@@ -486,29 +613,42 @@
                 return listItem;
             };
 
-            const renderSingleList = (listElement, itemsArray, otherItemsArray) => { listElement.innerHTML = ''; itemsArray.forEach(item => { listElement.appendChild(createRankItemElement(item, itemsArray, otherItemsArray)); }); const items = listElement.querySelectorAll('.rank-item'); items.forEach((item, index) => { item.querySelector('.rank-number').textContent = index + 1; }); };
-            const renderAllLists = () => { renderSingleList(rankListA, listA_Items, listB_Items); renderSingleList(rankListB, listB_Items, listA_Items); };
+            const renderSingleList = (listElement, itemsArray, otherItemsArray) => {
+                listElement.innerHTML = '';
+                const cleanItems = deduplicateList(itemsArray);
+                cleanItems.forEach(item => {
+                    listElement.appendChild(createRankItemElement(item, cleanItems, otherItemsArray));
+                });
+                const items = listElement.querySelectorAll('.rank-item');
+                items.forEach((item, index) => {
+                    item.querySelector('.rank-number').textContent = index + 1;
+                });
+            };
+            const renderAllLists = () => {
+                listA_Items = deduplicateList(listA_Items);
+                listB_Items = deduplicateList(listB_Items);
+                renderSingleList(rankListA, listA_Items, listB_Items);
+                renderSingleList(rankListB, listB_Items, listA_Items);
+            };
             const updateChatPreview = () => { if(!chatPreview) return; const messages = chatLog.querySelectorAll('p>span'); let previewHTML = ''; if (messages.length > 0) { const lastMsg = messages[messages.length - 1]; if (messages.length > 1) { const secondLastMsg = messages[messages.length - 2]; previewHTML += `<p>${secondLastMsg.innerHTML}</p>`; } previewHTML += `<p>${lastMsg.innerHTML}</p>`; } else { previewHTML = '<p>No new messages...</p>'; } chatPreview.innerHTML = previewHTML; };
 
-            // Smooth slow auto-scroll configuration on Sortable
+            // Sortable initialization with Auto-Scroll disabled
             new Sortable(rankListA, {
                 animation: 150,
-                scroll: true,
-                scrollSensitivity: 80,
-                scrollSpeed: 8,
+                scroll: false,
                 onEnd: () => {
-                    listA_Items = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => listA_Items.find(i => i.id == item.dataset.id));
+                    const orderedIds = Array.from(rankListA.querySelectorAll('.rank-item')).map(item => Number(item.dataset.id));
+                    listA_Items = orderedIds.map(id => listA_Items.find(i => i.id === id)).filter(Boolean);
                     renderAllLists();
                     socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                 }
             });
             new Sortable(rankListB, {
                 animation: 150,
-                scroll: true,
-                scrollSensitivity: 80,
-                scrollSpeed: 8,
+                scroll: false,
                 onEnd: () => {
-                    listB_Items = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => listB_Items.find(i => i.id == item.dataset.id));
+                    const orderedIds = Array.from(rankListB.querySelectorAll('.rank-item')).map(item => Number(item.dataset.id));
+                    listB_Items = orderedIds.map(id => listB_Items.find(i => i.id === id)).filter(Boolean);
                     renderAllLists();
                     socket.emit('updateLists', { listA: listA_Items, listB: listB_Items });
                 }
@@ -521,7 +661,11 @@
             chatSendBtn.addEventListener('click', handleSendMessage);
             chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleSendMessage());
             socket.on('connect', () => socket.emit('requestInitialData'));
-            socket.on('rankingLists', (lists) => { listA_Items = lists.listA; listB_Items = lists.listB; renderAllLists(); });
+            socket.on('rankingLists', (lists) => {
+                listA_Items = deduplicateList(lists.listA || []);
+                listB_Items = deduplicateList(lists.listB || []);
+                renderAllLists();
+            });
         });
     </script>
 </body>
